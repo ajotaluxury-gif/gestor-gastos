@@ -210,6 +210,96 @@ export function borrarMovimiento(id) {
 export const restaurarMovimiento = (record) =>
   tx('movimientos', 'readwrite', ({ movimientos }) => req(movimientos.put(record)));
 
+// ---------- Presupuestos ----------
+// Un presupuesto es un tope mensual fijo para una categoría de gasto (único por categoría).
+
+export const UMBRAL_ALERTA = 0.8;
+const NIVEL_RANK = { ok: 0, alerta: 1, excedido: 2 };
+
+/** Estado de un presupuesto: alerta desde el 80 %, excedido al pasar el 100 %. */
+export function estadoPresupuesto(gastado, limite) {
+  const pct = limite > 0 ? gastado / limite : 0;
+  const nivel = pct > 1 ? 'excedido' : pct >= UMBRAL_ALERTA ? 'alerta' : 'ok';
+  return { pct, nivel, restante: limite - gastado };
+}
+
+export const listPresupuestos = (ambito) => getAll('presupuestos', 'ambito', ambito);
+
+export function validarPresupuesto(p) {
+  const errors = {};
+  if (!AMBITOS[p.ambito]) errors.ambito = 'Ámbito inválido.';
+  if (!p.categoriaId) errors.categoria = 'Elegí una categoría.';
+  if (!Number.isSafeInteger(p.montoCentavos) || p.montoCentavos <= 0) errors.monto = 'Ingresá un monto mayor a cero.';
+  return errors;
+}
+
+/** Crea o actualiza el presupuesto de una categoría de gasto. */
+export async function guardarPresupuesto({ ambito, categoriaId, montoCentavos }) {
+  const errors = validarPresupuesto({ ambito, categoriaId, montoCentavos });
+  if (Object.keys(errors).length) throw new ValidationError(errors);
+  return tx(['presupuestos', 'categorias'], 'readwrite', async ({ presupuestos, categorias }) => {
+    const cat = await req(categorias.get(categoriaId));
+    if (!cat || cat.ambito !== ambito || cat.tipo !== 'gasto') {
+      throw new ValidationError({ categoria: 'Elegí una categoría de gasto de este ámbito.' });
+    }
+    const prev = await req(presupuestos.index('categoriaId').get(categoriaId));
+    const record = stamp({ ...prev, ambito, categoriaId, montoCentavos });
+    await req(presupuestos.put(record));
+    return record;
+  });
+}
+
+export function borrarPresupuesto(id) {
+  return tx('presupuestos', 'readwrite', async ({ presupuestos }) => {
+    const record = await req(presupuestos.get(id));
+    if (record) await req(presupuestos.delete(id));
+    return record;
+  });
+}
+
+export const restaurarPresupuesto = (record) =>
+  tx('presupuestos', 'readwrite', ({ presupuestos }) => req(presupuestos.put(record)));
+
+/**
+ * Presupuestos activos de un mes con lo gastado y su estado, más urgentes primero.
+ * Los de categorías archivadas no se muestran.
+ */
+export async function resumenPresupuestos(ambito, ym) {
+  const [pres, cats, movs] = await Promise.all([
+    listPresupuestos(ambito), listCategorias(ambito), listMovimientosMes(ambito, ym),
+  ]);
+  const catMap = new Map(cats.map((c) => [c.id, c]));
+  const gastos = new Map(sumarPorCategoria(movs, 'gasto').map((f) => [f.categoriaId, f.monto]));
+  return pres
+    .map((p) => {
+      const gastado = gastos.get(p.categoriaId) ?? 0;
+      return { presupuesto: p, categoria: catMap.get(p.categoriaId), gastado, ...estadoPresupuesto(gastado, p.montoCentavos) };
+    })
+    .filter((x) => x.categoria && !x.categoria.archivada)
+    .sort((a, b) => b.pct - a.pct || a.categoria.orden - b.categoria.orden);
+}
+
+/**
+ * Después de guardar un gasto: si hizo que su presupuesto suba de nivel
+ * (ok → alerta → excedido), devuelve el nuevo estado; si no, null.
+ * @param rec  movimiento guardado
+ * @param prev movimiento antes de editar (o null si es nuevo)
+ */
+export async function cruceDeUmbral(rec, prev) {
+  if (rec.tipo !== 'gasto') return null;
+  const pres = await tx('presupuestos', 'readonly', ({ presupuestos }) =>
+    req(presupuestos.index('categoriaId').get(rec.categoriaId)));
+  if (!pres) return null;
+  const ym = rec.fecha.slice(0, 7);
+  const gastado = (await listMovimientosMes(rec.ambito, ym))
+    .filter((m) => m.tipo === 'gasto' && m.categoriaId === rec.categoriaId)
+    .reduce((s, m) => s + m.montoCentavos, 0);
+  const mismoLugar = prev && prev.tipo === 'gasto' && prev.categoriaId === rec.categoriaId && prev.fecha.slice(0, 7) === ym;
+  const antes = estadoPresupuesto(gastado - rec.montoCentavos + (mismoLugar ? prev.montoCentavos : 0), pres.montoCentavos);
+  const ahora = estadoPresupuesto(gastado, pres.montoCentavos);
+  return NIVEL_RANK[ahora.nivel] > NIVEL_RANK[antes.nivel] ? ahora : null;
+}
+
 // ---------- Cálculos ----------
 
 export function totales(movs) {

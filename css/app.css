@@ -457,6 +457,52 @@ details.archived .cat-badge { filter: grayscale(.8); }
 
 .trend-chart { position: relative; height: 220px; }
 
+/* ===== Presupuestos ===== */
+.presupuestos .month-nav { margin-bottom: 12px; }
+.budget-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.budget-amount { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.budget-total { display: grid; gap: 8px; }
+.budget-total strong { font-variant-numeric: tabular-nums; }
+.budget-row .mov-main { gap: 2px; }
+
+.budget-bar {
+  display: block; position: relative; height: 10px; margin: 6px 0 2px;
+  border-radius: 5px; background: var(--surface-2); overflow: hidden;
+}
+.budget-fill { display: block; height: 100%; border-radius: 5px; background: var(--ok); }
+.level-alerta .budget-fill { background: var(--warn); }
+.level-excedido .budget-fill {
+  background: repeating-linear-gradient(-45deg, var(--danger) 0 6px, color-mix(in srgb, var(--danger) 75%, #000) 6px 12px);
+}
+/* Marca del 80 % sobre la barra */
+.budget-bar::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 80%;
+  width: 2px; background: var(--surface);
+}
+
+.budget-status { font-size: .85rem; font-weight: 600; margin: 0; }
+.budget-status.level-ok { color: var(--muted); font-weight: 500; }
+.budget-status.level-alerta { color: var(--warn); }
+.budget-status.level-excedido { color: var(--danger); }
+
+.budget-cat { font-size: 1.1rem; margin: 0; }
+
+.tabbar a { position: relative; }
+.tab-badge {
+  position: absolute; top: 6px; left: calc(50% + 6px);
+  min-width: 18px; height: 18px; padding: 0 5px;
+  display: grid; place-items: center; border-radius: 9px;
+  font-size: .7rem; font-weight: 800; line-height: 1;
+  border: 2px solid var(--surface);
+}
+.tab-badge.level-alerta { background: var(--warn); color: #000; }
+.tab-badge.level-excedido { background: var(--danger); color: #fff; }
+
+.toast-warn { background: #7a4a00; }
+@media (prefers-color-scheme: dark) {
+  .toast-warn { background: #fdb022; color: #2a1a00; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }

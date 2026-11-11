@@ -4,14 +4,15 @@ import { getState, notifyDataChanged } from '../state.js';
 import { getMeta, setMeta } from '../db.js';
 import {
   listCategorias, getMovimiento, guardarMovimiento, borrarMovimiento, restaurarMovimiento,
-  validarMovimiento, ValidationError, NOTA_MAX,
+  validarMovimiento, cruceDeUmbral, ValidationError, NOTA_MAX,
 } from '../repo.js';
-import { parseMonto, formatNumber } from '../money.js';
+import { parseMonto, formatNumber, formatARS } from '../money.js';
 import { todayISO, toDisplay } from '../dates.js';
 import { toast, toastError } from '../toast.js';
 import { openSheet, fieldErrors } from '../sheet.js';
 
 let abierto = false;
+const pctFmt = new Intl.NumberFormat('es-AR', { style: 'percent', maximumFractionDigits: 0 });
 
 const ultimaKey = (ambito, tipo) => `ultimaCat:${ambito}:${tipo}`;
 const safeMeta = (key) => getMeta(key).catch(() => null);
@@ -125,7 +126,22 @@ async function abrir(id) {
       sheet.close();
       notifyDataChanged();
       const fuera = !rec.fecha.startsWith(getState().mes);
-      toast(`${tipo === 'gasto' ? 'Gasto' : 'Ingreso'} ${mov ? 'actualizado' : 'guardado'}${fuera ? ` (${toDisplay(rec.fecha)})` : ''}`);
+      const msg = `${tipo === 'gasto' ? 'Gasto' : 'Ingreso'} ${mov ? 'actualizado' : 'guardado'}${fuera ? ` (${toDisplay(rec.fecha)})` : ''}`;
+
+      // Si este gasto hizo cruzar el 80 % o el 100 % del presupuesto, lo avisamos en el mismo toast.
+      const cruce = await cruceDeUmbral(rec, mov).catch(() => null);
+      if (cruce) {
+        const nombre = categorias.find((c) => c.id === rec.categoriaId)?.nombre ?? 'La categoría';
+        const aviso = cruce.nivel === 'excedido'
+          ? `⛔ ${nombre}: te pasaste del presupuesto por ${formatARS(-cruce.restante)}`
+          : `⚠ ${nombre}: usaste el ${pctFmt.format(cruce.pct)} del presupuesto`;
+        toast(`${msg}. ${aviso}`, {
+          kind: 'warn', duration: 8000, action: 'Ver',
+          onAction: () => { location.hash = '#/presupuestos'; },
+        });
+      } else {
+        toast(msg);
+      }
     } catch (err) {
       if (err instanceof ValidationError) errs.show(err.errors, focusCat);
       else errs.showGeneral(err);

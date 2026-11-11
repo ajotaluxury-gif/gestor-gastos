@@ -6,6 +6,8 @@ import { toast, toastError } from './toast.js';
 import { registerSW } from './sw-client.js';
 import { requestPersist } from './storage.js';
 import { destroyCharts } from './charts.js';
+import { resumenPresupuestos } from './repo.js';
+import { currentMonth } from './dates.js';
 import * as movimientos from './views/movimientos.js';
 import * as resumen from './views/resumen.js';
 import * as presupuestos from './views/presupuestos.js';
@@ -41,9 +43,34 @@ async function render() {
       destroyCharts();
       $view.replaceChildren(node);
     }
+    actualizarAvisoPresupuestos();
   } catch (err) {
     console.error(err);
     if (token === renderToken) $view.replaceChildren(errorBox(err, render));
+  }
+}
+
+/** Globito en la pestaña Presupuestos con cuántos están en alerta este mes. */
+async function actualizarAvisoPresupuestos() {
+  const tab = document.querySelector('.tabbar a[data-route="presupuestos"]');
+  try {
+    const filas = await resumenPresupuestos(getState().ambito, currentMonth());
+    const excedidos = filas.filter((f) => f.nivel === 'excedido').length;
+    const alertas = filas.filter((f) => f.nivel !== 'ok').length;
+    let badge = tab.querySelector('.tab-badge');
+    if (!alertas) {
+      badge?.remove();
+      tab.removeAttribute('aria-label');
+      return;
+    }
+    badge ??= tab.appendChild(document.createElement('span'));
+    badge.className = `tab-badge ${excedidos ? 'level-excedido' : 'level-alerta'}`;
+    badge.setAttribute('aria-hidden', 'true');
+    badge.textContent = String(alertas);
+    tab.setAttribute('aria-label',
+      `Presupuestos: ${alertas} ${alertas === 1 ? 'categoría necesita' : 'categorías necesitan'} atención`);
+  } catch (err) {
+    console.warn('No se pudo calcular el aviso de presupuestos', err);
   }
 }
 

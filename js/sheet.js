@@ -2,6 +2,16 @@
 import { h } from './dom.js';
 
 let seq = 0;
+// history.back() es asincrónico: si se abre otra hoja antes de que termine,
+// el "atrás" pendiente la cerraría. Guardamos esa espera acá.
+let backPending = null;
+
+function goBack() {
+  backPending = new Promise((resolve) => {
+    addEventListener('popstate', () => { backPending = null; resolve(); }, { once: true });
+  });
+  history.back();
+}
 
 /**
  * @param {{title: string, body: Node[], footer?: Node[], onSubmit?: () => void}} opts
@@ -28,20 +38,28 @@ export function openSheet({ title, body, footer = [], onSubmit }) {
 
   // Abrir la hoja agrega una entrada al historial: "atrás" la cierra en vez de salir de la app.
   const onPopState = () => close();
+  let pushed = false;
   const closed = new Promise((resolve) => {
     dialog.addEventListener('close', () => {
       removeEventListener('popstate', onPopState);
-      if (history.state?.sheet === id) history.back();
+      if (pushed && history.state?.sheet === id) goBack();
       dialog.remove();
       resolve();
     }, { once: true });
   });
   dialog.addEventListener('click', (e) => { if (e.target === dialog) close(); });
 
+  const pushEntry = () => {
+    if (!dialog.open) return; // se cerró antes de que terminara el "atrás" anterior
+    history.pushState({ sheet: id }, '');
+    pushed = true;
+    addEventListener('popstate', onPopState);
+  };
+
   document.body.append(dialog);
-  history.pushState({ sheet: id }, '');
-  addEventListener('popstate', onPopState);
   dialog.showModal();
+  if (backPending) backPending.then(pushEntry);
+  else pushEntry();
   return { dialog, form, close, closed };
 }
 

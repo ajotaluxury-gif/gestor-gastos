@@ -86,6 +86,20 @@ test('cálculos del resumen', async () => {
   assert.equal(variacion(50, 0), null);
 });
 
+test('estado de presupuestos (80 % y 100 %)', async () => {
+  const { estadoPresupuesto, validarPresupuesto } = await import('../js/repo.js');
+  const nivel = (g) => estadoPresupuesto(g, 1000).nivel;
+  assert.equal(nivel(0), 'ok');
+  assert.equal(nivel(799), 'ok');
+  assert.equal(nivel(800), 'alerta');
+  assert.equal(nivel(1000), 'alerta');   // llegar justo al tope todavía no es pasarse
+  assert.equal(nivel(1001), 'excedido');
+  assert.deepEqual(estadoPresupuesto(1250, 1000), { pct: 1.25, nivel: 'excedido', restante: -250 });
+  assert.deepEqual(validarPresupuesto({ ambito: 'personal', categoriaId: 'x', montoCentavos: 100 }), {});
+  assert.deepEqual(Object.keys(validarPresupuesto({ ambito: 'x', categoriaId: '', montoCentavos: 0 })).sort(),
+    ['ambito', 'categoria', 'monto']);
+});
+
 test('fechas', () => {
   assert.equal(toDisplay('2026-03-05'), '05/03/2026');
   assert.equal(fromDisplay('5/3/2026'), '2026-03-05');
