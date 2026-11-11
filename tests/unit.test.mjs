@@ -41,6 +41,32 @@ test('validarMovimiento', async () => {
     { ingresos: 1000, gastos: 300, balance: 700 });
 });
 
+test('validarCategoria', async () => {
+  const { validarCategoria } = await import('../js/repo.js');
+  const ok = { ambito: 'negocio', tipo: 'ingreso', nombre: 'Ventas web', emoji: '🛒', color: '#2563eb' };
+  assert.deepEqual(validarCategoria(ok), {});
+  for (const emoji of ['🏋️', '👨‍👩‍👧', '🇦🇷', '1️⃣']) assert.deepEqual(validarCategoria({ ...ok, emoji }), {}, emoji);
+  for (const emoji of ['', 'a', '🛒🛒', 'ab']) assert.ok(validarCategoria({ ...ok, emoji }).emoji, emoji);
+  assert.ok(validarCategoria({ ...ok, nombre: '   ' }).nombre);
+  assert.ok(validarCategoria({ ...ok, nombre: 'x'.repeat(41) }).nombre);
+  assert.ok(validarCategoria({ ...ok, color: 'red' }).color);
+  assert.ok(validarCategoria({ ...ok, tipo: 'otro' }).tipo);
+});
+
+test('el Service Worker precachea todos los archivos de la app', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs');
+  const { join, relative } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const sw = readFileSync(join(root, 'sw.js'), 'utf8');
+  const assets = new Set([...sw.matchAll(/'\.\/([^']+)'/g)].map((m) => m[1]));
+  const walk = (dir) => readdirSync(join(root, dir), { withFileTypes: true }).flatMap((e) =>
+    (e.isDirectory() ? walk(join(dir, e.name)) : [relative(root, join(root, dir, e.name)).replace(/\\/g, '/')]));
+  const files = [...walk('js'), ...walk('css'), ...walk('icons'), 'vendor/chart.umd.min.js', 'index.html', 'manifest.webmanifest'];
+  const faltan = files.filter((f) => !assets.has(f));
+  assert.deepEqual(faltan, [], `Agregá a ASSETS en sw.js: ${faltan.join(', ')}`);
+});
+
 test('fechas', () => {
   assert.equal(toDisplay('2026-03-05'), '05/03/2026');
   assert.equal(fromDisplay('5/3/2026'), '2026-03-05');

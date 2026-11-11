@@ -1,10 +1,6 @@
 // Categorías iniciales. Se cargan una sola vez, dentro de la migración 1.
 import { stamp } from './records.js';
-
-export const PALETTE = [
-  '#e11d48', '#ea580c', '#d97706', '#65a30d', '#059669', '#0891b2',
-  '#2563eb', '#7c3aed', '#c026d3', '#db2777', '#0d9488', '#64748b',
-];
+import { PALETTE } from './palette.js';
 
 const SEED = {
   personal: {

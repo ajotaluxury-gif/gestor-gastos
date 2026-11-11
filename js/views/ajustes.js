@@ -34,6 +34,7 @@ export async function render(state) {
   const activas = categorias.filter((c) => !c.archivada);
   const gastos = activas.filter((c) => c.tipo === 'gasto').length;
   const ingresos = activas.filter((c) => c.tipo === 'ingreso').length;
+  const archivadas = categorias.length - activas.length;
 
   const persistSlot = h('div', null);
   const paintPersist = (status) => persistSlot.replaceChildren(persistBlock(status, async () => {
@@ -47,17 +48,19 @@ export async function render(state) {
     h('h2', null, 'Ajustes'),
 
     h('div', { class: 'card' },
+      h('h3', null, `Categorías · ${AMBITOS[state.ambito].label}`),
+      h('dl', { class: 'kv' },
+        h('dt', null, 'De gasto'), h('dd', null, gastos),
+        h('dt', null, 'De ingreso'), h('dd', null, ingresos),
+        archivadas > 0 && h('dt', null, 'Archivadas'), archivadas > 0 && h('dd', null, archivadas)),
+      h('a', { class: 'btn btn-block', href: '#/categorias' }, 'Administrar categorías ›'),
+      h('p', { class: 'muted hint' }, 'Cada ámbito tiene sus propias categorías: cambiá de ámbito arriba para editar las del otro.')),
+
+    h('div', { class: 'card' },
       h('h3', null, 'Almacenamiento'),
       persistSlot,
       h('dl', { class: 'kv' },
         h('dt', null, 'Espacio usado'), h('dd', null, formatBytes(usage)))),
-
-    h('div', { class: 'card' },
-      h('h3', null, `Categorías · ${AMBITOS[state.ambito].label}`),
-      h('dl', { class: 'kv' },
-        h('dt', null, 'De gasto'), h('dd', null, gastos),
-        h('dt', null, 'De ingreso'), h('dd', null, ingresos)),
-      h('p', { class: 'muted' }, 'La edición de categorías llega en la etapa (c).')),
 
     h('div', { class: 'card' },
       h('h3', null, 'Acerca de'),

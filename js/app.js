@@ -9,10 +9,13 @@ import * as movimientos from './views/movimientos.js';
 import * as resumen from './views/resumen.js';
 import * as presupuestos from './views/presupuestos.js';
 import * as ajustes from './views/ajustes.js';
+import * as categorias from './views/categorias.js';
 import { openMovimientoForm } from './views/form.js';
 
-const ROUTES = { movimientos, resumen, presupuestos, ajustes };
+const ROUTES = { movimientos, resumen, presupuestos, ajustes, categorias };
 const DEFAULT_ROUTE = 'movimientos';
+// Pantallas internas: qué pestaña de abajo queda marcada.
+const TAB_OF = { categorias: 'ajustes' };
 
 const $view = document.getElementById('view');
 
@@ -25,8 +28,9 @@ let renderToken = 0;
 
 async function render() {
   const route = currentRoute();
+  const tab = TAB_OF[route] ?? route;
   for (const a of document.querySelectorAll('.tabbar a')) {
-    if (a.dataset.route === route) a.setAttribute('aria-current', 'page');
+    if (a.dataset.route === tab) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   }
   const token = ++renderToken;
