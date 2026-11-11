@@ -9,6 +9,7 @@ import * as movimientos from './views/movimientos.js';
 import * as resumen from './views/resumen.js';
 import * as presupuestos from './views/presupuestos.js';
 import * as ajustes from './views/ajustes.js';
+import { openMovimientoForm } from './views/form.js';
 
 const ROUTES = { movimientos, resumen, presupuestos, ajustes };
 const DEFAULT_ROUTE = 'movimientos';
@@ -50,6 +51,11 @@ function bindUI() {
     btn.addEventListener('click', () => setAmbito(btn.dataset.ambito));
   }
   window.addEventListener('hashchange', render);
+  addEventListener('data-changed', render);
+
+  const fab = document.getElementById('fab');
+  fab.hidden = false;
+  fab.addEventListener('click', () => openMovimientoForm());
   subscribe((state) => {
     paintAmbito(state);
     render();

@@ -20,7 +20,10 @@ function friendlyMessage(err) {
   }
 }
 
-const wrap = (err) => (err instanceof DBError ? err : new DBError(friendlyMessage(err), err));
+// Solo traducimos errores de IndexedDB (DOMException); los de la app (p. ej. validación) pasan tal cual.
+const wrap = (err) => (err instanceof DOMException || err == null
+  ? new DBError(friendlyMessage(err), err)
+  : err);
 
 /** Envuelve un IDBRequest en una promesa. */
 export const req = (r) => new Promise((resolve, reject) => {

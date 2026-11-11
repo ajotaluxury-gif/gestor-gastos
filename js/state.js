@@ -43,6 +43,9 @@ export async function setAmbito(ambito) {
   }
 }
 
+/** Avisa a la app que cambiaron datos (para volver a pintar la vista actual). */
+export const notifyDataChanged = () => dispatchEvent(new Event('data-changed'));
+
 export function setMes(mes) {
   if (mes === state.mes) return;
   state.mes = mes;

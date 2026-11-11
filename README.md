@@ -15,6 +15,10 @@ node --test tests/unit.test.mjs
 node tools/make-icons.mjs   # regenera los íconos de icons/
 ```
 
+> **Tip:** el Service Worker sirve todo desde la caché, así que mientras desarrollás
+> activá en Chrome DevTools → Application → Service Workers la opción **Update on reload**
+> (o **Bypass for network**). Si no, vas a seguir viendo la versión vieja.
+
 ### Al cambiar archivos de la app
 
 1. Si agregaste un archivo, sumalo a `ASSETS` en `sw.js`.

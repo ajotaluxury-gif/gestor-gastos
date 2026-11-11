@@ -29,6 +29,18 @@ test('formatNumber usa formato es-AR', () => {
   assert.equal(formatNumber(5), '0,05');
 });
 
+test('validarMovimiento', async () => {
+  const { validarMovimiento, totales } = await import('../js/repo.js');
+  const ok = { ambito: 'personal', tipo: 'gasto', montoCentavos: 100, categoriaId: 'x', fecha: '2026-11-11', nota: '' };
+  assert.deepEqual(validarMovimiento(ok), {});
+  const bad = validarMovimiento({ ...ok, ambito: 'otro', tipo: 'x', montoCentavos: 0, categoriaId: '', fecha: '2026-02-30', nota: 'a'.repeat(201) });
+  assert.deepEqual(Object.keys(bad).sort(), ['ambito', 'categoria', 'fecha', 'monto', 'nota', 'tipo']);
+  assert.equal(validarMovimiento({ ...ok, montoCentavos: 1.5 }).monto !== undefined, true);
+  assert.deepEqual(
+    totales([{ tipo: 'gasto', montoCentavos: 300 }, { tipo: 'ingreso', montoCentavos: 1000 }]),
+    { ingresos: 1000, gastos: 300, balance: 700 });
+});
+
 test('fechas', () => {
   assert.equal(toDisplay('2026-03-05'), '05/03/2026');
   assert.equal(fromDisplay('5/3/2026'), '2026-03-05');

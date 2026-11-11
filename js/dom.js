@@ -21,6 +21,9 @@ export function h(tag, props, ...children) {
   return el;
 }
 
+/** Color de categoría seguro para usar en estilos (#rrggbb o gris por defecto). */
+export const safeColor = (c) => (/^#[0-9a-f]{6}$/i.test(c ?? '') ? c : '#64748b');
+
 /** Bloque de estado vacío o de "próximamente". */
 export function emptyState(icon, title, text) {
   return h('div', { class: 'empty' },
