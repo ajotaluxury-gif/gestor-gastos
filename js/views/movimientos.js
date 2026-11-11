@@ -1,16 +1,23 @@
 // Listado de movimientos: por mes, o búsqueda con filtros sobre todo el historial.
 import { h, emptyState, safeColor } from '../dom.js';
-import { setMes } from '../state.js';
 import {
   listCategorias, listMovimientos, listMovimientosMes, totales, ordenarMovimientos,
 } from '../repo.js';
 import { formatARS } from '../money.js';
-import { addMonths, currentMonth, monthLabel, toDisplay, todayISO } from '../dates.js';
+import { toDisplay, todayISO } from '../dates.js';
+import { monthNav, totalesCard } from '../components.js';
 import { openMovimientoForm } from './form.js';
 
 // Los filtros sobreviven a cambios de pestaña mientras la app está abierta.
 const filtros = { q: '', tipo: '', categoriaId: '', desde: '', hasta: '' };
 let panelAbierto = false;
+
+/** Abre el listado ya filtrado (por ejemplo, desde el resumen). */
+export function verMovimientos({ categoriaId = '', tipo = '', desde = '', hasta = '' }) {
+  Object.assign(filtros, { q: '', tipo, categoriaId, desde, hasta });
+  panelAbierto = true;
+  location.hash = '#/movimientos';
+}
 
 const hayFiltros = () => Object.values(filtros).some(Boolean);
 const normalizar = (s) => (s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -28,15 +35,6 @@ function dayLabel(iso) {
   const [y, m, dd] = iso.split('-').map(Number);
   const wd = weekdayFmt.format(new Date(Date.UTC(y, m - 1, dd))).replace('.', '');
   return `${wd.charAt(0).toUpperCase()}${wd.slice(1)} ${toDisplay(iso)}`;
-}
-
-const signed = (cents) => `${cents < 0 ? '−' : ''}${formatARS(Math.abs(cents))}`;
-
-function totalesCard({ ingresos, gastos, balance }) {
-  return h('div', { class: 'totals' },
-    h('div', null, h('span', { class: 'muted' }, 'Ingresos'), h('strong', { class: 'ingreso' }, `+${formatARS(ingresos)}`)),
-    h('div', null, h('span', { class: 'muted' }, 'Gastos'), h('strong', { class: 'gasto' }, `−${formatARS(gastos)}`)),
-    h('div', null, h('span', { class: 'muted' }, 'Balance'), h('strong', null, signed(balance))));
 }
 
 function fila(m, cat) {
@@ -67,16 +65,6 @@ function lista(movs, catMap) {
     h('section', { class: 'day' },
       h('h3', { class: 'day-head' }, dayLabel(fecha)),
       h('ul', { class: 'rows' }, items.map((m) => fila(m, catMap.get(m.categoriaId)))))));
-}
-
-function monthNav(mes) {
-  const esActual = mes === currentMonth();
-  return h('div', { class: 'month-nav' },
-    h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Mes anterior', onClick: () => setMes(addMonths(mes, -1)) }, '‹'),
-    h('div', { class: 'month-label' },
-      h('h2', null, monthLabel(mes)),
-      !esActual && h('button', { class: 'link-btn', type: 'button', onClick: () => setMes(currentMonth()) }, 'Ir al mes actual')),
-    h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Mes siguiente', onClick: () => setMes(addMonths(mes, 1)) }, '›'));
 }
 
 function aplicarFiltros(movs, catMap) {

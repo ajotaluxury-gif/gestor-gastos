@@ -222,6 +222,28 @@ export function totales(movs) {
   return { ingresos, gastos, balance: ingresos - gastos };
 }
 
+/** Suma por categoría de un tipo, de mayor a menor: [{ categoriaId, monto }]. */
+export function sumarPorCategoria(movs, tipo) {
+  const sumas = new Map();
+  for (const m of movs) {
+    if (m.tipo === tipo) sumas.set(m.categoriaId, (sumas.get(m.categoriaId) ?? 0) + m.montoCentavos);
+  }
+  return [...sumas].map(([categoriaId, monto]) => ({ categoriaId, monto })).sort((a, b) => b.monto - a.monto);
+}
+
+/**
+ * Agrupa las porciones chicas en "otras" para que el gráfico se lea bien.
+ * @returns {{categoriaId: string|null, monto: number}[]} (categoriaId null = "Otras")
+ */
+export function agruparResto(filas, max) {
+  if (filas.length <= max) return filas;
+  const resto = filas.slice(max - 1).reduce((s, f) => s + f.monto, 0);
+  return [...filas.slice(0, max - 1), { categoriaId: null, monto: resto }];
+}
+
+/** Variación relativa (0.12 = +12 %) o null si no hay base para comparar. */
+export const variacion = (actual, anterior) => (anterior > 0 ? (actual - anterior) / anterior : null);
+
 /** Más recientes primero: por fecha y, dentro del día, por momento de carga. */
 export const ordenarMovimientos = (movs) =>
   movs.sort((a, b) => b.fecha.localeCompare(a.fecha) || b.createdAt.localeCompare(a.createdAt));

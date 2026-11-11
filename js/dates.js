@@ -41,6 +41,25 @@ export function addMonths(ym, n) {
 /** Límites para consultar un mes por rango de strings (incluye ambos extremos). */
 export const monthBounds = (ym) => [`${ym}-01`, `${ym}-31`];
 
+/** Último día real del mes: "2026-02" → "2026-02-28" */
+export function lastDayOfMonth(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return `${ym}-${pad(new Date(Date.UTC(y, m, 0)).getUTCDate())}`;
+}
+
+const ymToDate = (ym) => {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, 1));
+};
+const nameFmt = new Intl.DateTimeFormat('es-AR', { month: 'long', timeZone: 'UTC' });
+const shortFmt = new Intl.DateTimeFormat('es-AR', { month: 'short', timeZone: 'UTC' });
+
+/** "2026-10" → "octubre" */
+export const monthName = (ym) => nameFmt.format(ymToDate(ym));
+
+/** "2026-10" → "oct" */
+export const monthShort = (ym) => shortFmt.format(ymToDate(ym)).replace('.', '');
+
 const monthFmt = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 /** "2026-11" → "Noviembre de 2026" */

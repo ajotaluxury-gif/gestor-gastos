@@ -2,7 +2,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseMonto, formatNumber } from '../js/money.js';
-import { addMonths, fromDisplay, toDisplay, isValidISODate, monthBounds } from '../js/dates.js';
+import {
+  addMonths, fromDisplay, toDisplay, isValidISODate, monthBounds, lastDayOfMonth, monthName, monthShort,
+} from '../js/dates.js';
 
 test('parseMonto acepta formatos argentinos', () => {
   const ok = (s, v) => assert.deepEqual(parseMonto(s), { ok: true, value: v }, s);
@@ -67,6 +69,23 @@ test('el Service Worker precachea todos los archivos de la app', async () => {
   assert.deepEqual(faltan, [], `Agregá a ASSETS en sw.js: ${faltan.join(', ')}`);
 });
 
+test('cálculos del resumen', async () => {
+  const { sumarPorCategoria, agruparResto, variacion } = await import('../js/repo.js');
+  const movs = [
+    { tipo: 'gasto', categoriaId: 'a', montoCentavos: 100 },
+    { tipo: 'gasto', categoriaId: 'b', montoCentavos: 500 },
+    { tipo: 'gasto', categoriaId: 'a', montoCentavos: 300 },
+    { tipo: 'ingreso', categoriaId: 'c', montoCentavos: 9999 },
+  ];
+  assert.deepEqual(sumarPorCategoria(movs, 'gasto'), [
+    { categoriaId: 'b', monto: 500 }, { categoriaId: 'a', monto: 400 }]);
+  const filas = [5, 4, 3, 2, 1].map((monto, i) => ({ categoriaId: `c${i}`, monto }));
+  assert.equal(agruparResto(filas, 5), filas);
+  assert.deepEqual(agruparResto(filas, 3), [filas[0], filas[1], { categoriaId: null, monto: 6 }]);
+  assert.equal(variacion(120, 100), 0.2);
+  assert.equal(variacion(50, 0), null);
+});
+
 test('fechas', () => {
   assert.equal(toDisplay('2026-03-05'), '05/03/2026');
   assert.equal(fromDisplay('5/3/2026'), '2026-03-05');
@@ -77,4 +96,9 @@ test('fechas', () => {
   assert.equal(addMonths('2026-12', 1), '2027-01');
   assert.equal(addMonths('2026-05', -17), '2024-12');
   assert.deepEqual(monthBounds('2026-02'), ['2026-02-01', '2026-02-31']);
+  assert.equal(lastDayOfMonth('2026-02'), '2026-02-28');
+  assert.equal(lastDayOfMonth('2024-02'), '2024-02-29');
+  assert.equal(lastDayOfMonth('2026-12'), '2026-12-31');
+  assert.equal(monthName('2026-10'), 'octubre');
+  assert.equal(monthShort('2026-09'), 'sept');
 });

@@ -5,6 +5,7 @@ import { errorBox } from './dom.js';
 import { toast, toastError } from './toast.js';
 import { registerSW } from './sw-client.js';
 import { requestPersist } from './storage.js';
+import { destroyCharts } from './charts.js';
 import * as movimientos from './views/movimientos.js';
 import * as resumen from './views/resumen.js';
 import * as presupuestos from './views/presupuestos.js';
@@ -36,7 +37,10 @@ async function render() {
   const token = ++renderToken;
   try {
     const node = await ROUTES[route].render(getState());
-    if (token === renderToken) $view.replaceChildren(node);
+    if (token === renderToken) {
+      destroyCharts();
+      $view.replaceChildren(node);
+    }
   } catch (err) {
     console.error(err);
     if (token === renderToken) $view.replaceChildren(errorBox(err, render));
@@ -56,6 +60,8 @@ function bindUI() {
   }
   window.addEventListener('hashchange', render);
   addEventListener('data-changed', render);
+  // Los gráficos toman los colores del tema: si cambia claro/oscuro, se vuelven a pintar.
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
 
   const fab = document.getElementById('fab');
   fab.hidden = false;

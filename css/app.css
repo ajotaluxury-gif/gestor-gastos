@@ -434,6 +434,29 @@ details.archived .cat-badge { filter: grayscale(.8); }
 .danger-zone { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--border); }
 .danger-zone p { margin: 0 0 6px; font-size: .85rem; }
 
+/* ===== Resumen ===== */
+.resumen .month-nav { margin-bottom: 12px; }
+
+.trend-list { list-style: none; margin: -6px 0 16px; padding: 0 4px; display: grid; gap: 4px; font-size: .9rem; }
+.trend-good { color: var(--ok); }
+.trend-bad { color: var(--warn); }
+
+.donut { position: relative; height: 220px; margin: 8px 0 12px; }
+.donut-center {
+  position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
+  pointer-events: none;
+}
+.donut-center span { font-size: .8rem; }
+.donut-center strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+
+.breakdown { margin-bottom: 8px; }
+.bar { display: block; height: 6px; margin-top: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--cat); }
+.amount-col { display: grid; justify-items: end; flex: none; font-variant-numeric: tabular-nums; }
+.amount-col .muted { font-size: .8rem; }
+
+.trend-chart { position: relative; height: 220px; }
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
