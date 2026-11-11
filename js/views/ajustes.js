@@ -4,6 +4,7 @@ import { getAll, DB_VERSION } from '../db.js';
 import { persistStatus, requestPersist, storageUsage, formatBytes } from '../storage.js';
 import { getAppVersion } from '../sw-client.js';
 import { toast } from '../toast.js';
+import { tarjetaDatos } from './datos.js';
 
 const PERSIST_INFO = {
   granted: ['ok', '✅', 'Datos protegidos', 'Android no va a borrar tus datos aunque falte espacio.'],
@@ -24,11 +25,12 @@ function persistBlock(status, onRequest) {
 }
 
 export async function render(state) {
-  const [persist, usage, version, categorias] = await Promise.all([
+  const [persist, usage, version, categorias, datos] = await Promise.all([
     persistStatus(),
     storageUsage(),
     getAppVersion(),
     getAll('categorias', 'ambito', state.ambito),
+    tarjetaDatos(state),
   ]);
 
   const activas = categorias.filter((c) => !c.archivada);
@@ -46,6 +48,8 @@ export async function render(state) {
 
   return h('section', null,
     h('h2', null, 'Ajustes'),
+
+    datos,
 
     h('div', { class: 'card' },
       h('h3', null, `Categorías · ${AMBITOS[state.ambito].label}`),

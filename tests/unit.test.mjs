@@ -100,6 +100,49 @@ test('estado de presupuestos (80 % y 100 %)', async () => {
     ['ambito', 'categoria', 'monto']);
 });
 
+test('CSV: separador ";", BOM, CRLF, escapes y montos con signo', async () => {
+  const { construirCSV, montoCSV, campoCSV } = await import('../js/backup.js');
+  assert.equal(montoCSV(123456), '1234,56');
+  assert.equal(montoCSV(-5), '-0,05');
+  assert.equal(campoCSV('hola; "che"'), '"hola; ""che"""');
+  assert.equal(campoCSV('=HYPERLINK("x")'), '"\'=HYPERLINK(""x"")"');
+  assert.equal(campoCSV('-1234,56'), '-1234,56'); // número negativo: sin escapar
+  const catMap = new Map([['c1', { nombre: 'Súper' }], ['c2', { nombre: 'Sueldo' }]]);
+  const csv = construirCSV([
+    { fecha: '2026-11-10', ambito: 'personal', tipo: 'gasto', categoriaId: 'c1', montoCentavos: 150050, nota: 'línea1\nlínea2', createdAt: 'b' },
+    { fecha: '2026-11-01', ambito: 'negocio', tipo: 'ingreso', categoriaId: 'c2', montoCentavos: 100000, nota: '', createdAt: 'a' },
+  ], catMap);
+  assert.ok(csv.startsWith('﻿Fecha;Ámbito;Tipo;Categoría;Monto;Nota\r\n'));
+  const lineas = csv.slice(1).split('\r\n');
+  assert.equal(lineas[1], '01/11/2026;Negocio;Ingreso;Sueldo;1000,00;');
+  assert.equal(lineas[2], '10/11/2026;Personal;Gasto;Súper;-1500,50;"línea1\nlínea2"');
+});
+
+test('validarBackup', async () => {
+  const { validarBackup, APP_ID } = await import('../js/backup.js');
+  const t = '2026-11-01T00:00:00.000Z';
+  const cat = { id: 'c1', ambito: 'personal', tipo: 'gasto', nombre: 'Súper', emoji: '🛒', color: '#2563eb', archivada: 0, orden: 0, createdAt: t, updatedAt: t };
+  const mov = { id: 'm1', ambito: 'personal', tipo: 'gasto', montoCentavos: 1000, categoriaId: 'c1', fecha: '2026-11-05', nota: '', createdAt: t, updatedAt: t };
+  const pres = { id: 'p1', ambito: 'personal', categoriaId: 'c1', montoCentavos: 5000, createdAt: t, updatedAt: t };
+  const base = { app: APP_ID, schemaVersion: 1, exportedAt: t,
+    data: { movimientos: [mov], categorias: [cat], presupuestos: [pres], meta: [{ key: 'ambitoActual', value: 'negocio' }, { key: 'raro', value: 1 }] } };
+
+  const ok = validarBackup(base);
+  assert.equal(ok.ok, true, ok.errores.join());
+  assert.deepEqual(ok.resumen.porAmbito.personal, { movimientos: 1, categorias: 1, presupuestos: 1 });
+  assert.deepEqual(ok.data.meta, [{ key: 'ambitoActual', value: 'negocio' }]); // descarta claves desconocidas
+
+  const conData = (data) => validarBackup({ ...base, data: { ...base.data, ...data } });
+  assert.match(validarBackup({ app: 'otra' }).errores[0], /no es un backup/);
+  assert.match(validarBackup({ ...base, schemaVersion: 99 }).errores[0], /más nueva/);
+  assert.match(conData({ movimientos: 'x' }).errores[0], /falta la lista/);
+  assert.match(conData({ movimientos: [{ ...mov, categoriaId: 'nope' }] }).errores[0], /categoría no existe/);
+  assert.match(conData({ movimientos: [{ ...mov, montoCentavos: -1 }] }).errores[0], /monto/i);
+  assert.match(conData({ movimientos: [mov, mov] }).errores[0], /id repetido/);
+  assert.match(conData({ presupuestos: [pres, { ...pres, id: 'p2' }] }).errores[0], /misma categoría/);
+  assert.match(conData({ categorias: [{ ...cat, emoji: 'xx' }] }).errores[0], /emoji/);
+});
+
 test('fechas', () => {
   assert.equal(toDisplay('2026-03-05'), '05/03/2026');
   assert.equal(fromDisplay('5/3/2026'), '2026-03-05');

@@ -7,6 +7,8 @@ import { formatARS } from '../money.js';
 import { toDisplay, todayISO } from '../dates.js';
 import { monthNav, totalesCard } from '../components.js';
 import { openMovimientoForm } from './form.js';
+import { recordatorioBackup } from './datos.js';
+import { notifyDataChanged } from '../state.js';
 
 // Los filtros sobreviven a cambios de pestaña mientras la app está abierta.
 const filtros = { q: '', tipo: '', categoriaId: '', desde: '', hasta: '' };
@@ -180,8 +182,9 @@ export async function render(state) {
       h('button', { class: 'link-btn', type: 'button', onClick: panel.reset }, 'Limpiar filtros'));
   }
 
-  await refresh();
+  const [, recordatorio] = await Promise.all([refresh(), recordatorioBackup(notifyDataChanged)]);
   return h('section', null,
+    recordatorio,
     h('div', { class: 'toolbar' }, top, toggle),
     panel.el,
     results);

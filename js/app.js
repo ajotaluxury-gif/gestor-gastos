@@ -14,6 +14,7 @@ import * as presupuestos from './views/presupuestos.js';
 import * as ajustes from './views/ajustes.js';
 import * as categorias from './views/categorias.js';
 import { openMovimientoForm } from './views/form.js';
+import { avisarSiSeRestauro } from './views/datos.js';
 
 const ROUTES = { movimientos, resumen, presupuestos, ajustes, categorias };
 const DEFAULT_ROUTE = 'movimientos';
@@ -130,6 +131,7 @@ async function start() {
   bindUI();
   paintAmbito(getState());
   await render();
+  avisarSiSeRestauro();
 
   // No bloquea el arranque; el resultado se ve en Ajustes.
   requestPersist();

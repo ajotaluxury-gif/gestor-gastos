@@ -503,6 +503,26 @@ details.archived .cat-badge { filter: grayscale(.8); }
   .toast-warn { background: #fdb022; color: #2a1a00; }
 }
 
+/* ===== Tus datos / backup ===== */
+.datos h4 { margin: 16px 0 8px; font-size: .95rem; }
+.actions { display: grid; gap: 8px; margin-top: 12px; }
+.level-alerta-text { color: var(--warn); font-weight: 600; }
+.btn-small { min-height: 40px; padding: 0 14px; font-size: .9rem; }
+
+.backup-reminder { margin-bottom: 12px; }
+.backup-reminder p { margin: 2px 0 8px; }
+.reminder-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.check { display: flex; align-items: center; gap: 10px; min-height: var(--tap); font-weight: 600; cursor: pointer; }
+.check input { width: 22px; height: 22px; accent-color: var(--danger); }
+
+.error-list { margin: 0; padding-left: 20px; font-size: .9rem; display: grid; gap: 4px; }
+
+table.compare { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+table.compare th, table.compare td { padding: 6px 4px; text-align: right; border-bottom: 1px solid var(--border); }
+table.compare th[scope="row"] { text-align: left; font-weight: 500; }
+table.compare th[scope="colgroup"] { text-align: center; }
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
