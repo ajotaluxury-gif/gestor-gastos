@@ -5,7 +5,8 @@ import {
   getCategoria, listCategorias, guardarCategoria, archivarCategoria, borrarCategoria,
   restaurarCategoria, validarCategoria, contarUsos, ValidationError, NOMBRE_MAX,
 } from '../repo.js';
-import { COLORS, EMOJIS } from '../palette.js';
+import { COLORS } from '../palette.js';
+import { emojiPicker } from '../emoji-picker.js';
 import { getAll } from '../db.js';
 import { toast, toastError } from '../toast.js';
 import { openSheet, fieldErrors } from '../sheet.js';
@@ -67,13 +68,10 @@ async function abrir({ id, ambito, tipo }) {
     preview.style.setProperty('--cat', safeColor(color));
     pvEmoji.textContent = emojiInput.value.trim() || '❔';
     pvName.textContent = nombreInput.value.trim() || 'Nombre';
-    for (const b of emojiGrid.children) b.setAttribute('aria-pressed', String(b.dataset.emoji === emojiInput.value.trim()));
   }
 
-  const emojiGrid = h('div', { class: 'emoji-grid' }, EMOJIS.map((e) => h('button', {
-    type: 'button', class: 'emoji-btn', 'data-emoji': e, 'aria-label': `Usar ${e}`,
-    onClick: () => { emojiInput.value = e; errs.clear('emoji'); pintarPreview(); },
-  }, e)));
+  // Al tocar un emoji, el selector completa el campo y dispara 'input' (limpia el error y actualiza la vista previa).
+  const selector = emojiPicker({ input: emojiInput, idBase: 'c-emoji' });
 
   const swatches = h('div', { class: 'swatches' }, COLORS.map((c) => h('label', { class: 'swatch', style: `--cat:${c.hex}`, title: c.nombre },
     h('input', {
@@ -166,8 +164,7 @@ async function abrir({ id, ambito, tipo }) {
       h('div', { class: 'field' }, h('label', { for: 'c-nombre' }, 'Nombre'), nombreInput, errs.els.nombre),
       h('div', { class: 'field' },
         h('label', { for: 'c-emoji' }, 'Emoji'),
-        h('p', { class: 'muted hint' }, 'Elegí uno de la lista o escribí cualquiera con el teclado.'),
-        emojiInput, emojiGrid, errs.els.emoji),
+        emojiInput, errs.els.emoji, selector.el),
       h('fieldset', { class: 'field', 'aria-describedby': 'err-color' },
         h('legend', null, 'Color'), swatches, errs.els.color),
       errs.general,

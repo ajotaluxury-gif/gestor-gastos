@@ -8,6 +8,7 @@ import { parseCantidad, parseMonto, formatInput, formatCantidad, formatNumber } 
 import { todayISO, currentMonth, lastDayOfMonth } from '../dates.js';
 import { toast, toastError } from '../toast.js';
 import { openSheet, fieldErrors } from '../sheet.js';
+import { emojiPicker } from '../emoji-picker.js';
 
 let abierto = false;
 
@@ -168,8 +169,35 @@ async function cuentaForm({ id }) {
 
 // ======================= Meta =======================
 
-export const EMOJIS_META = ['🚗', '🏍️', '🚲', '📺', '💻', '📱', '🏠', '🛋️', '✈️', '🏖️', '🎓', '💍',
-  '👶', '🐶', '🎸', '🎮', '⌚', '📷', '🧳', '🏥', '🛟', '🎁', '💰', '🎯'];
+/** Primer grupo del selector en metas: cosas típicas para las que se ahorra. */
+export const EMOJIS_META = `
+  🚗 auto coche
+  🏍️ moto
+  🛵 moto scooter
+  🚲 bici bicicleta
+  🛴 monopatin
+  📺 tv tele television
+  💻 notebook computadora
+  📱 celular telefono
+  🏠 casa vivienda terreno
+  🛋️ muebles
+  🧊 heladera electrodomesticos
+  ✈️ viaje vacaciones
+  🏖️ vacaciones playa
+  🎓 estudios universidad
+  💍 casamiento anillo
+  👶 bebe hijo
+  🐶 mascota perro
+  🎸 instrumento
+  🎮 consola videojuegos
+  📷 camara fotos
+  🏥 salud emergencia
+  ♿ silla de ruedas accesibilidad
+  🛟 fondo de emergencia imprevistos
+  🎁 regalo
+  🎯 objetivo meta
+  💰 ahorro
+`;
 
 export const openMetaForm = (opts = {}) => unaVez(() => metaForm(opts));
 
@@ -195,12 +223,7 @@ async function metaForm({ id }) {
   errs.bind('emoji', emojiInput);
   errs.bind('objetivo', objetivoInput);
 
-  const grid = h('div', { class: 'emoji-grid' }, EMOJIS_META.map((e) => h('button', {
-    type: 'button', class: 'emoji-btn', 'data-emoji': e, 'aria-label': `Usar ${e}`,
-    onClick: () => { emojiInput.value = e; errs.clear('emoji'); marcar(); },
-  }, e)));
-  const marcar = () => { for (const b of grid.children) b.setAttribute('aria-pressed', String(b.dataset.emoji === emojiInput.value.trim())); };
-  emojiInput.addEventListener('input', marcar);
+  const selector = emojiPicker({ input: emojiInput, idBase: 'g-emoji', destacados: { nombre: 'Para metas', texto: EMOJIS_META } });
 
   const monedaField = h('fieldset', { class: 'seg-tipo' },
     h('legend', { class: 'sr-only' }, 'Moneda del objetivo'),
@@ -254,13 +277,12 @@ async function metaForm({ id }) {
     }
   }
 
-  marcar();
   sheet = openSheet({
     title: meta ? 'Editar meta' : 'Nueva meta',
     onSubmit: guardar,
     body: [
       h('div', { class: 'field' }, h('label', { for: 'g-nombre' }, '¿Para qué ahorrás?'), nombreInput, errs.els.nombre),
-      h('div', { class: 'field' }, h('label', { for: 'g-emoji' }, 'Emoji'), emojiInput, grid, errs.els.emoji),
+      h('div', { class: 'field' }, h('label', { for: 'g-emoji' }, 'Emoji'), emojiInput, errs.els.emoji, selector.el),
       h('div', { class: 'field' }, h('label', { for: 'g-objetivo' }, '¿Cuánto querés juntar?'), monedaField, objetivoInput, errs.els.objetivo),
       h('p', { class: 'muted hint' }, 'Podés cambiar el objetivo cuando quieras. Los aportes en otra moneda se suman con la cotización que cargues.'),
       errs.general,

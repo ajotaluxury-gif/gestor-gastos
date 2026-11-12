@@ -267,6 +267,33 @@ test('validarBackup v2: referencias de ahorros y fijos', async () => {
   assert.equal(r.resumen.avisos.length, 3);
 });
 
+test('catálogo de emojis: válidos, buscables y compatibles', async () => {
+  const { GRUPOS, TODOS, buscarEmojis } = await import('../js/emojis.js');
+  const { validarCategoria } = await import('../js/repo.js');
+  const base = { ambito: 'personal', tipo: 'gasto', nombre: 'x', color: '#2563eb' };
+  for (const { emoji } of TODOS) assert.deepEqual(validarCategoria({ ...base, emoji }), {}, `emoji inválido: ${emoji}`);
+  // Palabras clave en minúscula y sin tildes (la búsqueda normaliza lo que escribe el usuario).
+  for (const g of GRUPOS) for (const it of g.items) assert.match(it.palabras, /^[a-zñ ]+$/, `${it.emoji}: "${it.palabras}"`);
+  // Lo que se pidió encontrar
+  const busca = (q) => buscarEmojis(q).map((x) => x.emoji);
+  assert.ok(busca('moto').includes('🏍️') && busca('moto').includes('🛵'));
+  assert.ok(busca('seguro').includes('🛡️'));
+  assert.ok(busca('seguro moto').includes('🏍️'));
+  assert.ok(busca('service').includes('🔧'));
+  assert.ok(busca('bici').includes('🚲'));
+  assert.ok(busca('MONOPATÍN').includes('🛴'));                 // mayúsculas y tilde
+  assert.ok(busca('silla ruedas').includes('♿'));
+  assert.deepEqual(busca('zzz'), []);
+  // Los emojis de las categorías iniciales siguen disponibles en el selector.
+  const seed = ['🛒', '🍔', '🏠', '💡', '🚌', '🚗', '💊', '🎓', '🎉', '👕', '📱', '🎁', '📦', '💼', '💸', '📈',
+    '🏢', '👥', '🧾', '🏦', '📣', '🚚', '🖥️', '🧰', '📎', '💰', '🛠️'];
+  const disponibles = new Set(TODOS.map((x) => x.emoji));
+  for (const e of seed) assert.ok(disponibles.has(e), `falta ${e}`);
+  // Nada de Emoji 14+ (en Android viejos sale como un cuadrado vacío).
+  const nuevos = /[\u{1F6DD}-\u{1F6DF}\u{1F7F0}\u{1FA7B}\u{1FA7C}\u{1FAA9}-\u{1FAAF}\u{1FAB7}-\u{1FABF}\u{1FAC3}-\u{1FAC5}\u{1FAD7}-\u{1FADF}\u{1FAE0}-\u{1FAFF}]/u;
+  for (const { emoji } of TODOS) assert.ok(!nuevos.test(emoji), `emoji demasiado nuevo: ${emoji}`);
+});
+
 test('fechas', () => {
   assert.equal(toDisplay('2026-03-05'), '05/03/2026');
   assert.equal(fromDisplay('5/3/2026'), '2026-03-05');

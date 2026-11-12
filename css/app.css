@@ -420,6 +420,13 @@ details.archived .cat-badge { filter: grayscale(.8); }
 
 .input-emoji { width: 88px; font-size: 1.6rem; text-align: center; }
 .emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
+.emoji-selector { display: grid; gap: 8px; }
+.emoji-picker {
+  max-height: 280px; overflow-y: auto; overscroll-behavior: contain;
+  padding: 4px; border: 1px solid var(--border); border-radius: 12px;
+}
+.emoji-grupo + .emoji-grupo { margin-top: 10px; }
+.emoji-grupo-titulo { margin: 2px 2px 6px; font-size: .8rem; font-weight: 700; color: var(--muted); }
 .emoji-btn {
   height: 44px; border: 2px solid transparent; border-radius: 10px;
   background: var(--surface-2); font-size: 1.35rem; cursor: pointer;

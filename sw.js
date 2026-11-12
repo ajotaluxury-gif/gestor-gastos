@@ -4,7 +4,7 @@
  * Así el navegador detecta un SW nuevo, precachea los archivos nuevos y la app
  * muestra el aviso "Hay una actualización, tocá para recargar".
  */
-const VERSION = '1.1.1';
+const VERSION = '1.2.0';
 const CACHE_PREFIX = 'gestor-gastos-';
 const CACHE = `${CACHE_PREFIX}${VERSION}`;
 
@@ -29,6 +29,8 @@ const ASSETS = [
   './js/repo.js',
   './js/sheet.js',
   './js/palette.js',
+  './js/emojis.js',
+  './js/emoji-picker.js',
   './js/components.js',
   './js/charts.js',
   './js/backup.js',

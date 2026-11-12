@@ -1,4 +1,4 @@
-// Colores de categoría (con nombre, para lectores de pantalla) y emojis sugeridos.
+// Colores de categoría (con nombre, para lectores de pantalla).
 
 export const COLORS = [
   { hex: '#e11d48', nombre: 'Rojo' },
@@ -17,10 +17,4 @@ export const COLORS = [
 
 export const PALETTE = COLORS.map((c) => c.hex);
 
-export const EMOJIS = [
-  '🛒', '🍔', '🍕', '☕', '🍷', '🏠', '💡', '💧', '🔥', '📱', '💻', '🌐',
-  '🚌', '🚗', '⛽', '🚕', '✈️', '🏥', '💊', '🦷', '🎓', '📚', '🎉', '🎬',
-  '🎮', '🏋️', '⚽', '👕', '👟', '💇', '🐶', '👶', '🎁', '🧹', '🧴', '🌱',
-  '💳', '🏦', '🧾', '📦', '🧰', '🛠️', '🖥️', '📣', '🚚', '👥', '🏢', '💼',
-  '💰', '💸', '📈', '🪙', '📎', '❓',
-];
+// Los emojis para elegir están en js/emojis.js (por temas y con buscador).
