@@ -8,7 +8,13 @@
 import { seedCategorias } from './seed.js';
 
 export const DB_NAME = 'gestor-gastos';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
+
+/** Stores de datos (sin 'meta'), en el orden en que se respaldan. */
+export const DATA_STORES = [
+  'movimientos', 'categorias', 'presupuestos',
+  'cuentas', 'metas', 'ahorros', 'cotizaciones', 'fijos', 'pagos',
+];
 
 const MIGRATIONS = {
   1(db, tx) {
@@ -27,6 +33,32 @@ const MIGRATIONS = {
 
     seedCategorias(tx.objectStore('categorias'));
     tx.objectStore('meta').put({ key: 'seededAt', value: new Date().toISOString() });
+  },
+
+  // v2: ahorros (cuentas, metas, aportes/retiros, cotizaciones) y gastos fijos/cuotas con sus pagos.
+  2(db) {
+    const cuentas = db.createObjectStore('cuentas', { keyPath: 'id' });
+    cuentas.createIndex('ambito', 'ambito');
+
+    const metas = db.createObjectStore('metas', { keyPath: 'id' });
+    metas.createIndex('ambito', 'ambito');
+
+    const ahorros = db.createObjectStore('ahorros', { keyPath: 'id' });
+    ahorros.createIndex('ambito_fecha', ['ambito', 'fecha']);
+    ahorros.createIndex('cuentaId', 'cuentaId');
+    ahorros.createIndex('metaId', 'metaId'); // metaId null no se indexa (aportes sin meta)
+
+    db.createObjectStore('cotizaciones', { keyPath: 'moneda' });
+
+    const fijos = db.createObjectStore('fijos', { keyPath: 'id' });
+    fijos.createIndex('ambito', 'ambito');
+    fijos.createIndex('categoriaId', 'categoriaId');
+
+    const pagos = db.createObjectStore('pagos', { keyPath: 'id' });
+    pagos.createIndex('ambito_mes', ['ambito', 'mes']);
+    pagos.createIndex('fijoId', 'fijoId');
+    pagos.createIndex('movimientoId', 'movimientoId');
+    pagos.createIndex('fijo_mes', ['fijoId', 'mes'], { unique: true });
   },
 };
 

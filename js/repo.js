@@ -130,10 +130,13 @@ export async function contarPorCategoria(ambito) {
  * Devuelve lo borrado, para poder deshacer con restaurarCategoria().
  */
 export function borrarCategoria(id) {
-  return tx(['categorias', 'movimientos', 'presupuestos'], 'readwrite', async ({ categorias, movimientos, presupuestos }) => {
+  return tx(['categorias', 'movimientos', 'presupuestos', 'fijos'], 'readwrite', async ({ categorias, movimientos, presupuestos, fijos }) => {
     const usos = await req(movimientos.index('categoriaId').count(id));
     if (usos > 0) {
       throw new ValidationError({ general: 'Tiene movimientos cargados: archivala en lugar de borrarla.' });
+    }
+    if (await req(fijos.index('categoriaId').count(id)) > 0) {
+      throw new ValidationError({ general: 'La usa un gasto fijo: cambiale la categoría a ese gasto o archivala.' });
     }
     const categoria = await req(categorias.get(id));
     const presupuesto = await req(presupuestos.index('categoriaId').get(id));
@@ -212,25 +215,37 @@ export async function guardarMovimiento(data) {
 }
 
 /** Borra y devuelve el registro borrado (para poder deshacer). */
+/**
+ * Borra un movimiento. Si salió de tildar un gasto fijo, también se desmarca ese pago.
+ * Devuelve { movimiento, pago } para poder deshacer con restaurarMovimiento().
+ */
 export function borrarMovimiento(id) {
-  return tx('movimientos', 'readwrite', async ({ movimientos }) => {
-    const record = await req(movimientos.get(id));
-    if (record) await req(movimientos.delete(id));
-    return record;
+  return tx(['movimientos', 'pagos'], 'readwrite', async ({ movimientos, pagos }) => {
+    const movimiento = await req(movimientos.get(id));
+    if (!movimiento) return { movimiento: null, pago: null };
+    const pago = await req(pagos.index('movimientoId').get(id)) ?? null;
+    if (pago) await req(pagos.delete(pago.id));
+    await req(movimientos.delete(id));
+    return { movimiento, pago };
   });
 }
 
 /**
- * Vuelve a guardar un registro tal cual estaba (deshacer borrado).
+ * Deshace un borrado (acepta { movimiento, pago } o el registro solo).
  * Si mientras tanto se borró su categoría, no se restaura: quedaría huérfano.
  */
-export const restaurarMovimiento = (record) =>
-  tx(['movimientos', 'categorias'], 'readwrite', async ({ movimientos, categorias }) => {
-    const cat = await req(categorias.get(record.categoriaId));
-    if (!cat || cat.ambito !== record.ambito || cat.tipo !== record.tipo) {
+export const restaurarMovimiento = (borrado) =>
+  tx(['movimientos', 'categorias', 'pagos', 'fijos'], 'readwrite', async ({ movimientos, categorias, pagos, fijos }) => {
+    const { movimiento, pago } = borrado.movimiento ? borrado : { movimiento: borrado, pago: null };
+    const cat = await req(categorias.get(movimiento.categoriaId));
+    if (!cat || cat.ambito !== movimiento.ambito || cat.tipo !== movimiento.tipo) {
       throw new ValidationError({ general: 'No se puede deshacer: la categoría de ese movimiento ya no existe.' });
     }
-    await req(movimientos.put(record));
+    await req(movimientos.put(movimiento));
+    // El pago del fijo vuelve solo si el fijo sigue y ese mes no se volvió a marcar.
+    if (pago && await req(fijos.get(pago.fijoId)) && !await req(pagos.index('fijo_mes').get([pago.fijoId, pago.mes]))) {
+      await req(pagos.put(pago));
+    }
   });
 
 // ---------- Presupuestos ----------

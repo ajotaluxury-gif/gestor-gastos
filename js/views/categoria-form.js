@@ -6,6 +6,7 @@ import {
   restaurarCategoria, validarCategoria, contarUsos, ValidationError, NOMBRE_MAX,
 } from '../repo.js';
 import { COLORS, EMOJIS } from '../palette.js';
+import { getAll } from '../db.js';
 import { toast, toastError } from '../toast.js';
 import { openSheet, fieldErrors } from '../sheet.js';
 
@@ -36,6 +37,7 @@ async function abrir({ id, ambito, tipo }) {
   ambito = cat?.ambito ?? ambito;
   tipo = cat?.tipo ?? tipo;
   const usos = cat ? await contarUsos(cat.id) : 0;
+  const usosFijos = cat ? (await getAll('fijos', 'categoriaId', cat.id)).length : 0;
 
   // Color: el de la categoría, o el primero de la paleta que no esté en uso.
   let color = cat?.color;
@@ -147,10 +149,12 @@ async function abrir({ id, ambito, tipo }) {
     h('p', { class: 'muted' }, cat.archivada
       ? 'Al desarchivarla vuelve a aparecer al cargar movimientos.'
       : 'Las archivadas no aparecen al cargar movimientos, pero siguen en el historial y en los resúmenes.'),
-    usos === 0 && h('button', { class: 'btn btn-danger-outline', type: 'button', onClick: borrar }, 'Borrar categoría'),
-    usos === 0
-      ? h('p', { class: 'muted' }, 'Se puede borrar porque no tiene movimientos.')
-      : h('p', { class: 'muted' }, `Tiene ${usos} ${usos === 1 ? 'movimiento' : 'movimientos'}, por eso solo se puede archivar.`));
+    usos === 0 && usosFijos === 0 && h('button', { class: 'btn btn-danger-outline', type: 'button', onClick: borrar }, 'Borrar categoría'),
+    h('p', { class: 'muted' }, usos > 0
+      ? `Tiene ${usos} ${usos === 1 ? 'movimiento' : 'movimientos'}, por eso solo se puede archivar.`
+      : usosFijos > 0
+        ? `La usa${usosFijos === 1 ? ' un gasto fijo' : `n ${usosFijos} gastos fijos`}, por eso solo se puede archivar.`
+        : 'Se puede borrar porque no tiene movimientos.'));
 
   pintarPreview();
   sheet = openSheet({

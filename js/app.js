@@ -13,13 +13,17 @@ import * as resumen from './views/resumen.js';
 import * as presupuestos from './views/presupuestos.js';
 import * as ajustes from './views/ajustes.js';
 import * as categorias from './views/categorias.js';
+import * as plan from './views/plan.js';
+import * as ahorros from './views/ahorros.js';
 import { openMovimientoForm } from './views/form.js';
+import { openAhorroForm } from './views/ahorro-forms.js';
 import { avisarSiSeRestauro } from './views/datos.js';
+import { alertasFijos } from './fijos.js';
 
-const ROUTES = { movimientos, resumen, presupuestos, ajustes, categorias };
+const ROUTES = { movimientos, plan, presupuestos, ahorros, resumen, ajustes, categorias };
 const DEFAULT_ROUTE = 'movimientos';
 // Pantallas internas: qué pestaña de abajo queda marcada.
-const TAB_OF = { categorias: 'ajustes' };
+const TAB_OF = { categorias: 'ajustes', presupuestos: 'plan' };
 
 const $view = document.getElementById('view');
 
@@ -37,6 +41,8 @@ async function render() {
     if (a.dataset.route === tab) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   }
+  // En Ahorros, el "+" carga un aporte; en el resto, un movimiento.
+  document.getElementById('fab').setAttribute('aria-label', route === 'ahorros' ? 'Aportar a mis ahorros' : 'Cargar movimiento');
   const token = ++renderToken;
   try {
     const node = await ROUTES[route].render(getState());
@@ -51,30 +57,38 @@ async function render() {
   }
 }
 
-/** Globito en la pestaña Presupuestos con cuántos están en alerta este mes. */
+/**
+ * Globito en la pestaña Plan: presupuestos en alerta/excedidos y gastos fijos
+ * del mes sin pagar que están vencidos o vencen en 3 días o menos.
+ */
 let badgeToken = 0;
 async function actualizarAvisoPresupuestos() {
-  const tab = document.querySelector('.tabbar a[data-route="presupuestos"]');
+  const tab = document.querySelector('.tabbar a[data-route="plan"]');
   const token = ++badgeToken;
   try {
-    const filas = await resumenPresupuestos(getState().ambito, currentMonth());
+    const { ambito } = getState();
+    const [filas, fijos] = await Promise.all([resumenPresupuestos(ambito, currentMonth()), alertasFijos(ambito, currentMonth())]);
     if (token !== badgeToken) return; // llegó tarde: ya hay un cálculo más nuevo
-    const excedidos = filas.filter((f) => f.nivel === 'excedido').length;
-    const alertas = filas.filter((f) => f.nivel !== 'ok').length;
+    const presAlerta = filas.filter((f) => f.nivel !== 'ok').length;
+    const grave = filas.some((f) => f.nivel === 'excedido') || fijos.some((it) => it.estado.nivel === 'vencido');
+    const total = presAlerta + fijos.length;
     let badge = tab.querySelector('.tab-badge');
-    if (!alertas) {
+    if (!total) {
       badge?.remove();
       tab.removeAttribute('aria-label');
       return;
     }
     badge ??= tab.appendChild(document.createElement('span'));
-    badge.className = `tab-badge ${excedidos ? 'level-excedido' : 'level-alerta'}`;
+    badge.className = `tab-badge ${grave ? 'level-excedido' : 'level-alerta'}`;
     badge.setAttribute('aria-hidden', 'true');
-    badge.textContent = String(alertas);
-    tab.setAttribute('aria-label',
-      `Presupuestos: ${alertas} ${alertas === 1 ? 'categoría necesita' : 'categorías necesitan'} atención`);
+    badge.textContent = String(total);
+    const partes = [
+      fijos.length && `${fijos.length} ${fijos.length === 1 ? 'vencimiento' : 'vencimientos'}`,
+      presAlerta && `${presAlerta} ${presAlerta === 1 ? 'presupuesto' : 'presupuestos'}`,
+    ].filter(Boolean);
+    tab.setAttribute('aria-label', `Plan: ${partes.join(' y ')} para revisar`);
   } catch (err) {
-    console.warn('No se pudo calcular el aviso de presupuestos', err);
+    console.warn('No se pudo calcular el aviso del plan', err);
   }
 }
 
@@ -96,7 +110,7 @@ function bindUI() {
 
   const fab = document.getElementById('fab');
   fab.hidden = false;
-  fab.addEventListener('click', () => openMovimientoForm());
+  fab.addEventListener('click', () => (currentRoute() === 'ahorros' ? openAhorroForm() : openMovimientoForm()));
   subscribe((state) => {
     paintAmbito(state);
     render();

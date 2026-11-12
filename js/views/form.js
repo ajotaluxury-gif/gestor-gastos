@@ -164,16 +164,16 @@ async function abrir(id) {
   async function borrar() {
     delBtn.disabled = true;
     try {
-      const rec = await borrarMovimiento(mov.id);
+      const borrado = await borrarMovimiento(mov.id);
       sheet.close();
       notifyDataChanged();
-      if (!rec) return;
-      toast('Movimiento borrado', {
+      if (!borrado.movimiento) return;
+      toast(borrado.pago ? 'Movimiento borrado (y desmarcado el pago del gasto fijo)' : 'Movimiento borrado', {
         action: 'Deshacer',
         duration: 6000,
         onAction: async () => {
           try {
-            await restaurarMovimiento(rec);
+            await restaurarMovimiento(borrado);
             notifyDataChanged();
             toast('Movimiento restaurado');
           } catch (err) {

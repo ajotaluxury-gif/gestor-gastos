@@ -54,7 +54,12 @@ export async function reloadFresh() {
 }
 
 export async function go(hash) {
-  location.hash = hash;
+  if (location.hash === hash) {
+    // Misma ruta: no hay hashchange, se fuerza un redibujo (por si se tocaron datos por API).
+    (await import('/js/state.js')).notifyDataChanged();
+  } else {
+    location.hash = hash;
+  }
   await wait(250);
   await until(() => !$('.loading'), 5000, 'render');
 }

@@ -14,6 +14,13 @@ export function totalesCard({ ingresos, gastos, balance }) {
     h('div', null, h('span', { class: 'muted' }, 'Balance'), h('strong', null, signed(balance))));
 }
 
+/** Pestañas internas de "Plan": gastos fijos/cuotas y presupuestos. */
+export function planTabs(activa) {
+  return h('nav', { class: 'seg-tabs', 'aria-label': 'Plan del mes' },
+    h('a', { href: '#/plan', 'aria-current': activa === 'plan' ? 'page' : null }, 'Fijos y cuotas'),
+    h('a', { href: '#/presupuestos', 'aria-current': activa === 'presupuestos' ? 'page' : null }, 'Presupuestos'));
+}
+
 export function monthNav(mes) {
   const esActual = mes === currentMonth();
   // Se usa el mes del estado (no el de este dibujo): toques rápidos antes de redibujar no se pierden.

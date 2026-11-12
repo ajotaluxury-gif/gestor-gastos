@@ -8,7 +8,9 @@ import { formatARS } from '../money.js';
 import {
   addMonths, currentMonth, lastDayOfMonth, monthLabel, monthName, monthShort, todayISO,
 } from '../dates.js';
-import { monthNav, totalesCard } from '../components.js';
+import { monthNav, totalesCard, signed } from '../components.js';
+import { checklistMes, totalesChecklist } from '../fijos.js';
+import { listAhorros, cotizaciones, ahorroDelMes } from '../ahorros.js';
 import { mountChart, reducedMotion } from '../charts.js';
 import { verMovimientos } from './movimientos.js';
 
@@ -49,6 +51,7 @@ export async function render(state) {
     appendChildren(section,
       totalesCard(totales(delMes)),
       comparacion(delMes, porMes.get(addMonths(mes, -1)), mes),
+      await planYAhorro(ambito, mes, totales(delMes).balance),
       porCategoria(delMes, catMap, mes));
   }
   if (movs.length) section.append(tendencia(porMes, mes));
@@ -83,6 +86,32 @@ function comparacion(delMes, delAnterior, mes) {
     linea('Ingresaste', actual.ingresos, previo.ingresos, false),
   ].filter(Boolean);
   return items.length ? h('ul', { class: 'trend-list' }, items) : null;
+}
+
+// ---------- Fijos y ahorro ----------
+
+/**
+ * Lo que queda disponible: balance − ahorro neto del mes − fijos que faltan pagar.
+ * (Los fijos ya pagados ya están dentro de los gastos.)
+ */
+async function planYAhorro(ambito, mes, balance) {
+  const [items, ahorros, cotiz] = await Promise.all([checklistMes(ambito, mes), listAhorros(ambito), cotizaciones()]);
+  const fijos = totalesChecklist(items);
+  const ahorro = ahorroDelMes(ahorros, mes, cotiz);
+  if (!items.length && !ahorro.aportado && !ahorro.retirado) return null;
+  const disponible = balance - ahorro.neto - fijos.falta;
+  const linea = (label, valor, clase) => h('div', null, h('span', { class: 'muted' }, label), h('strong', { class: clase }, valor));
+  return h('div', { class: 'card plan-resumen' },
+    h('h3', null, 'Fijos y ahorro'),
+    items.length > 0 && linea('Gastos fijos pagados', `${formatARS(fijos.pagado)} de ${formatARS(fijos.comprometido)}`),
+    fijos.falta > 0 && linea('Fijos que faltan pagar', `−${formatARS(fijos.falta)}`, 'gasto'),
+    (ahorro.aportado > 0 || ahorro.retirado > 0) && linea('Ahorraste este mes', signed(ahorro.neto)),
+    ahorro.sinValuar.length > 0 && h('p', { class: 'muted hint' },
+      `${ahorro.sinValuar.length} movimiento(s) de ahorro en otra moneda sin cotización no se cuentan.`),
+    h('div', { class: 'plan-disponible' },
+      h('span', null, 'Te queda disponible'),
+      h('strong', { class: disponible < 0 ? 'gasto' : null }, signed(disponible))),
+    h('p', { class: 'muted hint' }, 'Balance del mes, menos lo que ahorraste y los fijos que todavía no pagaste.'));
 }
 
 // ---------- Por categoría ----------

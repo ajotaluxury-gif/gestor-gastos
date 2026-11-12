@@ -5,7 +5,7 @@ import {
   crearBackup, marcarBackupHecho, exportarCSV, leerBackup, conteoActual, restaurarBackup,
   estadoBackup, posponerRecordatorio,
 } from '../backup.js';
-import { monthLabel, toDisplay } from '../dates.js';
+import { monthLabel, toDisplay, fechaLocal } from '../dates.js';
 import { toast, toastError } from '../toast.js';
 import { openSheet } from '../sheet.js';
 
@@ -124,13 +124,16 @@ function tablaConteo(backup, actual) {
     h('tbody', null,
       fila('Movimientos', 'movimientos'),
       fila('Categorías', 'categorias'),
-      fila('Presupuestos', 'presupuestos')));
+      fila('Presupuestos', 'presupuestos'),
+      fila('Gastos fijos', 'fijos'),
+      fila('Ahorros', 'ahorros'),
+      fila('Metas', 'metas')));
 }
 
 function confirmarRestauracion(nombre, res, actual) {
   const { resumen } = res;
   const fecha = resumen.exportedAt
-    ? `Backup del ${toDisplay(resumen.exportedAt.slice(0, 10))}`
+    ? `Backup del ${toDisplay(fechaLocal(resumen.exportedAt))}`
     : 'Backup sin fecha de exportación';
   const check = h('input', { type: 'checkbox', id: 'r-ok' });
   const restoreBtn = h('button', { class: 'btn btn-danger', type: 'submit', disabled: true }, 'Reemplazar mis datos');
@@ -191,7 +194,7 @@ export function avisarSiSeRestauro() {
 
 function textoUltimo({ last, diasDesdeUltimo }) {
   if (!last) return 'Nunca';
-  const fecha = toDisplay(last.slice(0, 10));
+  const fecha = toDisplay(fechaLocal(last));
   if (diasDesdeUltimo === 0) return `Hoy (${fecha})`;
   if (diasDesdeUltimo === 1) return `Ayer (${fecha})`;
   return `Hace ${diasDesdeUltimo} días (${fecha})`;

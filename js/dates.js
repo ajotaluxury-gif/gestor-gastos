@@ -7,6 +7,12 @@ export function todayISO(d = new Date()) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/**
+ * Fecha LOCAL ("aaaa-mm-dd") de una marca de tiempo ISO (que está en UTC).
+ * Ojo: "2026-11-12T01:00Z".slice(0, 10) da el 12, pero en Argentina todavía es el 11.
+ */
+export const fechaLocal = (isoTimestamp) => todayISO(new Date(isoTimestamp));
+
 /** Mes local actual como "aaaa-mm". */
 export const currentMonth = (d = new Date()) => todayISO(d).slice(0, 7);
 

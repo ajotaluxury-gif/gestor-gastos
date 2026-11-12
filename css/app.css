@@ -175,7 +175,7 @@ dl.kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 /* ===== Tabbar ===== */
 .tabbar {
   position: fixed; z-index: 10; left: 0; right: 0; bottom: 0;
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
   height: calc(var(--tabbar-h) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
   background: var(--surface);
@@ -186,6 +186,10 @@ dl.kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
   color: var(--muted); text-decoration: none; font-size: .75rem; font-weight: 600;
 }
 .tabbar .tab-icon { font-size: 1.3rem; line-height: 1; filter: grayscale(1); opacity: .7; }
+.tabbar .tab-label { max-width: 100%; padding: 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Con 5 pestañas, "Movimientos" (la etiqueta más larga, ~6,1 veces el tamaño de letra) tiene que
+   entrar en un quinto del ancho: la letra se achica en celulares angostos y no pasa del tamaño normal. */
+.tabbar a { font-size: min(.75rem, calc((20vw - 6px) / 6.1)); letter-spacing: -.02em; }
 .tabbar a[aria-current="page"] { color: var(--accent); }
 .tabbar a[aria-current="page"] .tab-icon { filter: none; opacity: 1; }
 
@@ -525,6 +529,76 @@ table.compare { width: 100%; border-collapse: collapse; font-size: .9rem; font-v
 table.compare th, table.compare td { padding: 6px 4px; text-align: right; border-bottom: 1px solid var(--border); }
 table.compare th[scope="row"] { text-align: left; font-weight: 500; }
 table.compare th[scope="colgroup"] { text-align: center; }
+
+/* ===== Plan: fijos y cuotas ===== */
+.seg-tabs a {
+  display: flex; align-items: center; justify-content: center; min-height: 44px;
+  border-radius: 9px; color: var(--muted); font-weight: 700; text-decoration: none;
+}
+.seg-tabs a[aria-current="page"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.plan .month-nav { margin-bottom: 12px; }
+
+.fijo-item { display: flex; align-items: center; }
+.fijo-item .mov-row { flex: 1; min-width: 0; }
+.check {
+  flex: none; display: grid; place-items: center;
+  width: 30px; height: 30px; margin-left: 12px;
+  border: 2px solid var(--muted); border-radius: 8px; background: var(--surface);
+  color: #fff; font-size: 1.1rem; font-weight: 900; line-height: 1; cursor: pointer;
+  position: relative;
+}
+/* Zona táctil de 48px aunque el cuadrado se vea más chico. */
+.check::before { content: ""; position: absolute; inset: -9px; }
+.check.is-checked { background: var(--ok); border-color: var(--ok); }
+.fijo-item.nivel-vencido .check { border-color: var(--danger); }
+.fijo-item.nivel-pagado .mov-cat { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.mov-monto.pagado { color: var(--muted); }
+.fijo-item .mov-cat { white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 400px) {
+  .fijo-item .cat-badge { display: none; }
+  .fijo-item .mov-row { gap: 8px; padding-left: 10px; }
+}
+.fijo-estado { font-size: .8rem; font-weight: 600; color: var(--muted); }
+.estado-pagado { color: var(--ok); }
+.estado-vencido { color: var(--danger); }
+.estado-hoy, .estado-pronto { color: var(--warn); }
+
+.plan-resumen { display: grid; gap: 8px; }
+.plan-resumen > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.plan-resumen strong { font-variant-numeric: tabular-nums; }
+.plan-disponible { padding-top: 8px; border-top: 1px solid var(--border); font-weight: 700; }
+.plan-disponible strong { font-size: 1.2rem; }
+
+/* ===== Ahorros ===== */
+.ahorro-total { display: grid; gap: 6px; }
+.ahorro-total .big { font-size: 1.8rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.moneda-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.moneda-chip {
+  padding: 4px 10px; border-radius: 999px; background: var(--surface-2);
+  font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.ahorro-sec { margin: 18px 0 8px; }
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 4px 8px; }
+.sec-head h3 { margin: 0; font-size: 1rem; }
+
+.meta-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.meta-card { display: grid; gap: 8px; margin: 0; padding: 12px; }
+.meta-main {
+  display: flex; gap: 12px; align-items: flex-start; width: 100%;
+  border: 0; background: transparent; padding: 0; text-align: left; cursor: pointer;
+}
+.meta-main .mov-main { gap: 2px; }
+.meta-emoji { font-size: 1.8rem; line-height: 1; flex: none; }
+.meta-card .btn-small { justify-self: start; }
+.level-meta .budget-fill { background: var(--accent); }
+.budget-status.level-meta { color: var(--accent); }
+
+.cotiz-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 8px 12px; }
+.cotiz-row label { font-weight: 600; white-space: nowrap; }
+.cotiz-fecha { font-size: .75rem; }
+
+.chips-tipo { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.upper { text-transform: uppercase; }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }

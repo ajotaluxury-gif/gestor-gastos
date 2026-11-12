@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseMonto, formatNumber } from '../js/money.js';
 import {
-  addMonths, fromDisplay, toDisplay, isValidISODate, monthBounds, lastDayOfMonth, monthName, monthShort,
+  addMonths, fromDisplay, toDisplay, isValidISODate, monthBounds, lastDayOfMonth, monthName, monthShort, fechaLocal,
 } from '../js/dates.js';
 
 test('parseMonto acepta formatos argentinos', () => {
@@ -131,7 +131,10 @@ test('validarBackup', async () => {
 
   const ok = validarBackup(base);
   assert.equal(ok.ok, true, ok.errores.join());
-  assert.deepEqual(ok.resumen.porAmbito.personal, { movimientos: 1, categorias: 1, presupuestos: 1 });
+  assert.deepEqual(ok.resumen.porAmbito.personal, { movimientos: 1, categorias: 1, presupuestos: 1, fijos: 0, ahorros: 0, metas: 0 });
+  // Un backup v1 (sin ahorros ni fijos) se migra con listas vacías.
+  assert.deepEqual(ok.data.cuentas, []);
+  assert.deepEqual(ok.data.pagos, []);
   assert.deepEqual(ok.data.meta, [{ key: 'ambitoActual', value: 'negocio' }]); // descarta claves desconocidas
 
   const conData = (data) => validarBackup({ ...base, data: { ...base.data, ...data } });
@@ -156,6 +159,114 @@ test('validarBackup', async () => {
   assert.equal(validarBackup({ ...base, exportedAt: 12345 }).resumen.exportedAt, null);
 });
 
+test('montos en otras monedas (USD y cripto)', async () => {
+  const { parseCantidad, formatCantidad } = await import('../js/money.js');
+  const v = (s, m) => parseCantidad(s, m);
+  assert.deepEqual(v('1.500', 'USD'), { ok: true, value: 150000 });
+  assert.deepEqual(v('0.001', 'BTC'), { ok: true, value: 100000 });     // cripto: el punto es decimal
+  assert.deepEqual(v('0,00012345', 'BTC'), { ok: true, value: 12345 });
+  assert.deepEqual(v('1.234,5', 'ETH'), { ok: true, value: 123450000000 });
+  assert.equal(v('0,000000001', 'BTC').ok, false);                     // más de 8 decimales
+  assert.equal(v('10000000', 'BTC').ok, false);                        // demasiado grande
+  assert.equal(formatCantidad(150000, 'USD'), 'US$ 1.500,00');
+  assert.equal(formatCantidad(12345, 'BTC'), '0,00012345 BTC');
+});
+
+test('gastos fijos: cuotas, meses y vencimientos', async () => {
+  const F = await import('../js/fijos.js');
+  // Préstamo de 12 cuotas: en noviembre se paga la 5 → arrancó en julio; se sigue desde noviembre.
+  const p = { id: 'p', inicio: '2026-07', desde: '2026-11', cuotas: 12, hasta: null, dia: 31, montoCentavos: 1000 };
+  assert.equal(F.cuotaEnMes(p, '2026-10'), null);                       // antes de empezar a seguirlo
+  assert.deepEqual(F.cuotaEnMes(p, '2026-11'), { numero: 5, total: 12, vence: '2026-11-30' }); // día 31 → 30
+  assert.deepEqual(F.cuotaEnMes(p, '2027-02'), { numero: 8, total: 12, vence: '2027-02-28' });
+  assert.equal(F.cuotaEnMes(p, '2027-06').numero, 12);
+  assert.equal(F.cuotaEnMes(p, '2027-07'), null);                       // terminó
+  // Todos los meses, terminado en enero
+  const a = { id: 'a', inicio: '2026-01', desde: '2026-01', cuotas: null, hasta: '2027-01', dia: null, montoCentavos: 500 };
+  assert.deepEqual(F.cuotaEnMes(a, '2026-12'), { numero: null, total: null, vence: null });
+  assert.equal(F.cuotaEnMes(a, '2027-02'), null);
+  // Capital comprometido desde noviembre: cuotas 5..12 = 8, menos 1 pagada
+  const cap = F.capitalComprometido([p, a], new Set(['p|2026-11']), '2026-11');
+  assert.deepEqual(cap, { monto: 7000, cuotas: 7, planes: 1 });
+  // Vencimientos
+  assert.equal(F.estadoVencimiento('2026-11-10', '2026-11-11').nivel, 'vencido');
+  assert.equal(F.estadoVencimiento('2026-11-11', '2026-11-11').nivel, 'hoy');
+  assert.equal(F.estadoVencimiento('2026-11-14', '2026-11-11').nivel, 'pronto');
+  assert.equal(F.estadoVencimiento('2026-11-15', '2026-11-11').nivel, 'ok');
+  assert.equal(F.estadoVencimiento(null).nivel, 'sin');
+  assert.equal(F.diasEntre('2026-12-31', '2027-01-01'), 1);
+  // Validación
+  const base = { ambito: 'personal', nombre: 'Visa', categoriaId: 'c', montoCentavos: 100, dia: 10, inicio: '2026-11', desde: '2026-11', cuotas: 3, hasta: null };
+  assert.deepEqual(F.validarFijo(base), {});
+  assert.ok(F.validarFijo({ ...base, dia: 32 }).dia);
+  assert.ok(F.validarFijo({ ...base, cuotas: 0 }).cuotas);
+  assert.ok(F.validarFijo({ ...base, desde: '2027-02' }).cuotaActual); // cuota actual > total
+  assert.ok(F.validarFijo({ ...base, inicio: '2026-13' }).inicio);
+});
+
+test('ahorros: conversión, metas y ahorro del mes', async () => {
+  const A = await import('../js/ahorros.js');
+  const cotiz = new Map([['USD', { moneda: 'USD', centavos: 120000 }], ['BTC', { moneda: 'BTC', centavos: 10000000000 }]]);
+  assert.equal(A.convertir(10000, 'USD', 'ARS', cotiz), 12000000);       // US$100 × $1.200
+  assert.equal(A.convertir(12000000, 'ARS', 'USD', cotiz), 10000);
+  assert.equal(A.convertir(1000000, 'BTC', 'ARS', cotiz), 100000000);    // 0,01 BTC × $100.000.000 = $1.000.000
+  assert.equal(A.convertir(100, 'ETH', 'ARS', cotiz), null);              // sin cotización
+  const ah = [
+    { id: '1', tipo: 'aporte', cuentaId: 'k1', moneda: 'ARS', cantidad: 50000000, metaId: 'm', fecha: '2026-11-02' },
+    { id: '2', tipo: 'aporte', cuentaId: 'k2', moneda: 'USD', cantidad: 10000, metaId: 'm', fecha: '2026-11-03', pesos: 11500000 },
+    { id: '3', tipo: 'retiro', cuentaId: 'k1', moneda: 'ARS', cantidad: 10000000, metaId: null, fecha: '2026-11-04' },
+    { id: '4', tipo: 'aporte', cuentaId: 'k3', moneda: 'ETH', cantidad: 5, metaId: 'm', fecha: '2026-10-01' },
+  ];
+  assert.deepEqual([...A.saldosPorCuenta(ah)], [['k1', 40000000], ['k2', 10000], ['k3', 5]]);
+  const meta = { id: 'm', moneda: 'ARS', objetivo: 100000000 };
+  const p = A.progresoMeta(meta, ah, cotiz);
+  assert.equal(p.acumulado, 62000000);                                     // $500.000 + US$100 a $1.200
+  assert.deepEqual(p.sinCotizacion, ['ETH']);
+  assert.equal(p.faltan, 38000000);
+  const mes = A.ahorroDelMes(ah, '2026-11', cotiz);
+  assert.equal(mes.aportado, 50000000 + 11500000);                        // el USD usa los pesos indicados
+  assert.equal(mes.neto, 61500000 - 10000000);
+  const tot = A.totalesAhorro(ah, cotiz);
+  assert.deepEqual(tot.sinCotizacion, ['ETH']);
+  assert.equal(tot.totalPesos, 40000000 + 12000000);
+  // Validaciones
+  assert.deepEqual(A.validarCuenta({ ambito: 'personal', tipo: 'cripto', detalle: 'usdt', nota: '' }), {});
+  assert.equal(A.monedaDeCuenta('cripto', ' usdt '), 'USDT');
+  assert.ok(A.validarCuenta({ ambito: 'personal', tipo: 'cripto', detalle: 'bit coin', nota: '' }).detalle);
+  assert.ok(A.validarCuenta({ ambito: 'personal', tipo: 'banco', detalle: '', nota: '' }).detalle);
+  assert.deepEqual(A.validarCuenta({ ambito: 'personal', tipo: 'efectivo', detalle: '', nota: '' }), {});
+  assert.ok(A.validarAhorro({ ambito: 'personal', tipo: 'aporte', cuentaId: 'k', moneda: 'ARS', cantidad: 1, fecha: '2026-11-01', nota: '', pesos: 5 }).pesos);
+});
+
+test('validarBackup v2: referencias de ahorros y fijos', async () => {
+  const { validarBackup, APP_ID } = await import('../js/backup.js');
+  const t = '2026-11-01T00:00:00.000Z';
+  const cat = { id: 'c1', ambito: 'personal', tipo: 'gasto', nombre: 'Alquiler', emoji: '🏠', color: '#2563eb', archivada: 0, orden: 0, createdAt: t, updatedAt: t };
+  const mov = { id: 'm1', ambito: 'personal', tipo: 'gasto', montoCentavos: 1000, categoriaId: 'c1', fecha: '2026-11-05', nota: '', createdAt: t, updatedAt: t };
+  const cuenta = { id: 'k1', ambito: 'personal', tipo: 'dolar_mep', detalle: 'Broker', moneda: 'USD', nota: '', archivada: 0, createdAt: t, updatedAt: t };
+  const meta = { id: 'g1', ambito: 'personal', nombre: 'Moto', emoji: '🏍️', moneda: 'USD', objetivo: 300000, archivada: 0, createdAt: t, updatedAt: t };
+  const aporte = { id: 'a1', ambito: 'personal', tipo: 'aporte', cuentaId: 'k1', moneda: 'USD', cantidad: 5000, metaId: 'g1', fecha: '2026-11-02', nota: '', pesos: null, createdAt: t, updatedAt: t };
+  const fijo = { id: 'f1', ambito: 'personal', nombre: 'Alquiler', categoriaId: 'c1', montoCentavos: 1000, dia: 10, inicio: '2026-11', desde: '2026-11', cuotas: null, hasta: null, createdAt: t, updatedAt: t };
+  const pago = { id: 'p1', ambito: 'personal', fijoId: 'f1', mes: '2026-11', movimientoId: 'm1', montoCentavos: 1000, fecha: '2026-11-05', createdAt: t, updatedAt: t };
+  const data = { movimientos: [mov], categorias: [cat], presupuestos: [], cuentas: [cuenta], metas: [meta], ahorros: [aporte], cotizaciones: [{ moneda: 'USD', centavos: 120000, updatedAt: t }], fijos: [fijo], pagos: [pago], meta: [] };
+  const b = (d) => validarBackup({ app: APP_ID, schemaVersion: 2, exportedAt: t, data: { ...data, ...d } });
+  const ok = b({});
+  assert.equal(ok.ok, true, ok.errores.join());
+  assert.equal(ok.data.pagos.length, 1);
+  assert.match(b({ ahorros: [{ ...aporte, cuentaId: 'x' }] }).errores[0], /cuenta no existe/);
+  assert.match(b({ ahorros: [{ ...aporte, moneda: 'ARS' }] }).errores[0], /cuenta no existe o no corresponde/);
+  assert.match(b({ cuentas: [{ ...cuenta, moneda: 'ARS' }] }).errores[0], /moneda no corresponde/);
+  assert.match(b({ fijos: [{ ...fijo, categoriaId: 'x' }] }).errores[0], /categoría no existe/);
+  assert.match(b({ cuentas: undefined }).errores[0], /falta la lista de cuentas/);
+  // Lo menor se corrige con aviso: meta inexistente, pago huérfano, cotización inválida.
+  const r = b({ ahorros: [{ ...aporte, metaId: 'nope' }], pagos: [{ ...pago, movimientoId: 'nope' }], cotizaciones: [{ moneda: 'USD', centavos: -1 }] });
+  assert.equal(r.ok, true, r.errores.join());
+  assert.equal(r.data.ahorros[0].metaId, null);
+  assert.equal(r.data.pagos.length, 0);
+  assert.equal(r.data.cotizaciones.length, 0);
+  assert.equal(r.resumen.avisos.length, 3);
+});
+
 test('fechas', () => {
   assert.equal(toDisplay('2026-03-05'), '05/03/2026');
   assert.equal(fromDisplay('5/3/2026'), '2026-03-05');
@@ -171,4 +282,7 @@ test('fechas', () => {
   assert.equal(lastDayOfMonth('2026-12'), '2026-12-31');
   assert.equal(monthName('2026-10'), 'octubre');
   assert.equal(monthShort('2026-09'), 'sept');
+  // Una marca de tiempo de las 23:30 locales es de ese día aunque en UTC ya sea el siguiente.
+  assert.equal(fechaLocal(new Date(2026, 10, 11, 23, 30).toISOString()), '2026-11-11');
+  assert.equal(fechaLocal(new Date(2026, 0, 1, 0, 5).toISOString()), '2026-01-01');
 });

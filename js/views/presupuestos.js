@@ -3,7 +3,7 @@ import { h, emptyState, safeColor } from '../dom.js';
 import { resumenPresupuestos, estadoPresupuesto } from '../repo.js';
 import { formatARS } from '../money.js';
 import { currentMonth, lastDayOfMonth, todayISO } from '../dates.js';
-import { monthNav } from '../components.js';
+import { monthNav, planTabs } from '../components.js';
 import { openPresupuestoForm, categoriasSinPresupuesto } from './presupuesto-form.js';
 
 const pctFmt = new Intl.NumberFormat('es-AR', { style: 'percent', maximumFractionDigits: 0 });
@@ -43,7 +43,7 @@ export async function render(state) {
     ? h('button', { class: 'btn btn-block', type: 'button', onClick: () => openPresupuestoForm() }, '＋ Agregar presupuesto')
     : h('p', { class: 'muted hint' }, 'Todas las categorías de gasto ya tienen presupuesto.');
 
-  const section = h('section', { class: 'presupuestos' }, monthNav(state.mes));
+  const section = h('section', { class: 'presupuestos' }, planTabs('presupuestos'), monthNav(state.mes));
 
   if (!filas.length) {
     section.append(

@@ -11,6 +11,12 @@ no hay servidor, ni cuentas, ni nada que se suba a internet.
 - **Categorías:** se crean, editan, ordenan y archivan, con emoji y color.
 - **Resumen mensual:** totales, comparación con el mes anterior, gráfico por categoría y los últimos 6 meses.
 - **Presupuestos** por categoría, con alerta al 80 % y al pasar el 100 %.
+- **Gastos fijos y cuotas** (pestaña *Plan*): alquiler, servicios, préstamos, tarjetas. Aparecen solos en cada
+  mes que corresponde, con su día de vencimiento y aviso cuando faltan 3 días o menos. Tildarlo crea el gasto.
+  Muestra lo comprometido del mes y el capital que falta pagar en cuotas.
+- **Ahorros:** dónde está la plata (efectivo, banco, billetera virtual, dólar, dólar MEP, cripto, con su
+  detalle), metas con objetivo editable (en pesos o dólares) y aportes/retiros. Cotizaciones cargadas a mano
+  para ver el total en pesos.
 - **Historial** con búsqueda y filtros por tipo, categoría y fechas.
 - **Exportar a CSV** para Excel o Google Sheets, y **backup y restauración** en JSON.
 
@@ -135,6 +141,8 @@ celular abrí `http://localhost:8080`. Como es `localhost`, el Service Worker y 
 | `js/app.js` | Arranque, router por `#hash`, aviso de presupuestos |
 | `js/db.js`, `js/migrations.js`, `js/seed.js` | Capa fina sobre IndexedDB, migraciones y categorías iniciales |
 | `js/repo.js` | Reglas de negocio: validaciones, movimientos, categorías, presupuestos |
+| `js/fijos.js` | Gastos fijos y cuotas: qué toca cada mes, vencimientos, pagos y capital comprometido |
+| `js/ahorros.js` | Cuentas de ahorro, metas, aportes/retiros, cotizaciones y conversiones |
 | `js/backup.js` | CSV, backup JSON, validación y restauración |
 | `js/money.js`, `js/dates.js` | Montos en centavos (es-AR) y fechas `aaaa-mm-dd` |
 | `js/sheet.js`, `js/toast.js`, `js/dom.js`, `js/components.js` | Piezas de interfaz |
