@@ -4,7 +4,7 @@ import { getState, notifyDataChanged } from '../state.js';
 import { get, getAll, getMeta, setMeta } from '../db.js';
 import * as A from '../ahorros.js';
 import { ValidationError } from '../repo.js';
-import { parseCantidad, parseMonto, formatInput, formatCantidad, formatNumber } from '../money.js';
+import { parseCantidad, formatInput, formatCantidad, formatNumber } from '../money.js';
 import { todayISO, currentMonth, lastDayOfMonth } from '../dates.js';
 import { toast, toastError } from '../toast.js';
 import { openSheet, fieldErrors } from '../sheet.js';
@@ -392,7 +392,7 @@ async function ahorroForm({ id, tipo, metaId }) {
     const moneda = c?.moneda ?? 'ARS';
     const monto = parseCantidad(montoInput.value, moneda);
     const pesosTxt = pesosInput.value.trim();
-    const pesos = moneda !== 'ARS' && pesosTxt ? parseMonto(pesosTxt) : null;
+    const pesos = moneda !== 'ARS' && pesosTxt ? parseCantidad(pesosTxt, 'ARS') : null;
     const data = {
       id: ah?.id, ambito, tipo: t, cuentaId: c?.id ?? '', moneda,
       cantidad: monto.ok ? monto.value : NaN, metaId: metaSel.value || null,
@@ -469,7 +469,7 @@ export async function guardarCotizacionDesdeInput(moneda, texto) {
     if (!texto.trim()) {
       await A.borrarCotizacion(moneda);
     } else {
-      const r = parseMonto(texto);
+      const r = parseCantidad(texto, 'ARS');
       if (!r.ok) {
         toast(`Cotización de ${moneda}: ${r.error}`, { kind: 'error' });
         return false;

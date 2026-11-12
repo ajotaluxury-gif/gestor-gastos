@@ -39,7 +39,7 @@ export async function descargarBackup() {
     descargar(b);
     await marcarBackupHecho();
     notifyDataChanged();
-    toast(`Backup descargado (${b.cantidad} movimientos). Guardalo fuera del teléfono.`, { duration: 6000 });
+    toast(`Backup descargado (${b.cantidad} ${b.cantidad === 1 ? 'movimiento' : 'movimientos'}). Guardalo fuera del teléfono.`, { duration: 6000 });
   } catch (err) {
     toastError(err);
   }
@@ -65,7 +65,7 @@ export async function descargarCSV({ ambito, mes }) {
       return;
     }
     descargar(r);
-    toast(`CSV descargado (${r.cantidad} movimientos)`);
+    toast(`CSV descargado (${r.cantidad} ${r.cantidad === 1 ? 'movimiento' : 'movimientos'})`);
   } catch (err) {
     toastError(err);
   }

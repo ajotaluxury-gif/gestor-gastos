@@ -102,9 +102,11 @@ async function abrir(id) {
     const errors = {};
     if (enCuotas) {
       cuotas = entero(cuotasInput.value);
+      // Vacío no puede significar "sin cuotas": se guardaría como gasto de todos los meses.
+      if (cuotas === null) errors.cuotas = 'Poné la cantidad de cuotas.';
       const actual = entero(actualInput.value) ?? 1;
       if (!Number.isInteger(actual) || actual < 1) errors.cuotaActual = 'Tiene que ser 1 o más.';
-      else if (Number.isInteger(cuotas) && actual > cuotas) errors.cuotaActual = 'No puede ser mayor a la cantidad de cuotas.';
+      else if (Number.isInteger(cuotas) && cuotas >= 1 && actual > cuotas) errors.cuotaActual = 'No puede ser mayor a la cantidad de cuotas.';
       inicio = addMonths(mes, -((Number.isInteger(actual) ? actual : 1) - 1));
       // Las cuotas anteriores a este mes se toman como ya pagadas (salvo que ya las estuvieras siguiendo).
       desde = fijo?.cuotas && fijo.desde < mes ? (fijo.desde < inicio ? inicio : fijo.desde) : mes;
@@ -117,9 +119,14 @@ async function abrir(id) {
       montoCentavos: monto.ok ? monto.value : NaN, dia: Number.isNaN(dia) ? -1 : dia,
       inicio, desde, cuotas: Number.isNaN(cuotas) ? -1 : cuotas, hasta: enCuotas ? null : (fijo?.hasta ?? null),
     };
-    Object.assign(errors, F.validarFijo({ ...data, nombre: data.nombre.trim() }), errors);
-    if (!monto.ok) errors.monto = monto.error;
-    if (errs.show(errors)) return;
+    // Los errores propios del formulario (cuota actual, cuotas vacías) tienen prioridad.
+    const todos = { ...F.validarFijo({ ...data, nombre: data.nombre.trim() }), ...errors };
+    // En cuotas los meses se calculan solos: un error de "mes" sale de una cuota actual inválida, ya avisada.
+    if (enCuotas) delete todos.inicio;
+    // Con la cantidad de cuotas mal, comparar la cuota actual contra ella no tiene sentido.
+    if (todos.cuotas) delete todos.cuotaActual;
+    if (!monto.ok) todos.monto = monto.error;
+    if (errs.show(todos)) return;
     saveBtn.disabled = true;
     try {
       await F.guardarFijo(data);

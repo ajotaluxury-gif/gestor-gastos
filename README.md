@@ -1,4 +1,4 @@
-# Gestor de Gastos
+# Finanzas (gestor de gastos)
 
 Gestor de gastos personal como PWA, pensado para el celular Android.
 Se instala desde Chrome, funciona 100 % offline y **guarda los datos solo en el teléfono**:
@@ -19,6 +19,9 @@ no hay servidor, ni cuentas, ni nada que se suba a internet.
   para ver el total en pesos.
 - **Historial** con búsqueda y filtros por tipo, categoría y fechas.
 - **Exportar a CSV** para Excel o Google Sheets, y **backup y restauración** en JSON.
+- **Personalizar:** tema automático, claro u oscuro; un color para cada ámbito; tamaño de letra normal, grande o muy grande.
+- **Borrar todos los datos** (Ajustes → Zona de peligro): pide confirmación, ofrece un backup antes y el
+  botón "Confirmar" se habilita recién a los 5 segundos.
 
 Montos en pesos con formato argentino (1.234,56) y fechas dd/mm/aaaa.
 

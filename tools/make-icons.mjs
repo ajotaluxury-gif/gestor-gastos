@@ -6,8 +6,6 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const OUT = fileURLToPath(new URL('../icons/', import.meta.url));
-const BG = [15, 118, 110]; // #0f766e
-const FG = [255, 255, 255];
 const SS = 4; // supermuestreo por eje (antialiasing)
 
 // ---------- PNG ----------
@@ -56,18 +54,35 @@ function sdRoundRect(px, py, cx, cy, hw, hh, r) {
   return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
 }
 
-// Gráfico de barras ascendente con línea de base.
-const BAR_W = 0.11;
-const GAP = 0.045;
-const BOTTOM = 0.72;
-const HEIGHTS = [0.18, 0.30, 0.44];
-const X0 = 0.5 - (3 * BAR_W + 2 * GAP) / 2;
-const SHAPES = [
-  ...HEIGHTS.map((hgt, i) => {
-    const left = X0 + i * (BAR_W + GAP);
-    return [left + BAR_W / 2, BOTTOM - hgt / 2, BAR_W / 2, hgt / 2, 0.025];
-  }),
-  [0.5, 0.765, 0.24, 0.0175, 0.0175], // línea de base
+// Alcancía (chanchito) con una moneda dorada entrando, sobre degradé violeta → rosa.
+const hex = (s) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16));
+const VIOLETA = hex('#7c3aed');
+const ROSA = hex('#ec4899');
+const BLANCO = hex('#ffffff');
+const ORO = hex('#fcd34d');
+const ORO_OSCURO = hex('#f59e0b');
+const OSCURO = hex('#4c1d95');
+const NARIZ = hex('#f472b6');
+
+const circulo = (cx, cy, r) => (u, v) => Math.hypot(u - cx, v - cy) <= r;
+const elipse = (cx, cy, rx, ry) => (u, v) => ((u - cx) / rx) ** 2 + ((v - cy) / ry) ** 2 <= 1;
+const rect = (cx, cy, hw, hh, r) => (u, v) => sdRoundRect(u, v, cx, cy, hw, hh, r) <= 0;
+
+// Capas en orden de pintado: lo de abajo primero.
+const CAPAS = [
+  [circulo(0.5, 0.3, 0.105), ORO_OSCURO],        // moneda (borde)
+  [circulo(0.5, 0.3, 0.08), ORO],                // moneda (cara)
+  [rect(0.5, 0.3, 0.012, 0.045, 0.012), ORO_OSCURO], // detalle de la moneda
+  [circulo(0.4, 0.42, 0.065), BLANCO],           // oreja
+  [circulo(0.21, 0.54, 0.035), BLANCO],          // colita
+  [rect(0.37, 0.76, 0.045, 0.065, 0.03), BLANCO], // pata trasera
+  [rect(0.6, 0.76, 0.045, 0.065, 0.03), BLANCO],  // pata delantera
+  [elipse(0.49, 0.58, 0.27, 0.2), BLANCO],       // cuerpo
+  [rect(0.77, 0.58, 0.06, 0.075, 0.035), BLANCO], // hocico
+  [circulo(0.765, 0.555, 0.013), NARIZ],         // fosas nasales
+  [circulo(0.765, 0.605, 0.013), NARIZ],
+  [circulo(0.63, 0.5, 0.024), OSCURO],           // ojo
+  [rect(0.48, 0.405, 0.075, 0.015, 0.015), OSCURO], // ranura (la moneda "entra" acá)
 ];
 
 function render(size, maskable) {
@@ -86,8 +101,10 @@ function render(size, maskable) {
           if (!inBg) continue;
           const cu = 0.5 + (u - 0.5) / scale;
           const cv = 0.5 + (v - 0.5) / scale;
-          const inFg = SHAPES.some(([cx, cy, hw, hh, rad]) => sdRoundRect(cu, cv, cx, cy, hw, hh, rad) <= 0);
-          const c = inFg ? FG : BG;
+          // El degradé ocupa todo el fondo; el dibujo se achica en el maskable.
+          const t = Math.min(1, Math.max(0, (u + v) / 2));
+          let c = VIOLETA.map((k, i) => k + (ROSA[i] - k) * t);
+          for (const [dentro, color] of CAPAS) if (dentro(cu, cv)) c = color;
           r += c[0]; g += c[1]; b += c[2]; a += 1;
         }
       }

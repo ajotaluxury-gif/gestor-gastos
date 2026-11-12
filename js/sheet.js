@@ -2,6 +2,7 @@
 import { h } from './dom.js';
 
 let seq = 0;
+const USA_CLOSE_WATCHER = 'CloseWatcher' in globalThis;
 // history.back() es asincrónico: si se abre otra hoja antes de que termine,
 // el "atrás" pendiente la cerraría. Guardamos esa espera acá.
 let backPending = null;
@@ -69,8 +70,13 @@ export function openSheet({ title, body, footer = [], onSubmit }) {
 
   document.body.append(dialog);
   dialog.showModal();
-  if (backPending) backPending.then(pushEntry);
-  else pushEntry();
+  // Chrome 120+ (CloseWatcher) ya cierra un <dialog> modal con el "atrás" de Android, sin tocar el
+  // historial. Ahí no agregamos entradas: el history.back() asincrónico podía deshacer una pestaña
+  // tocada justo después de cerrar la hoja. El truco del historial queda para navegadores viejos.
+  if (!USA_CLOSE_WATCHER) {
+    if (backPending) backPending.then(pushEntry);
+    else pushEntry();
+  }
   return { dialog, form, close, closed };
 }
 

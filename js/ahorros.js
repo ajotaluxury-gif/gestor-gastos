@@ -4,7 +4,7 @@ import { stamp } from './records.js';
 import { AMBITOS } from './state.js';
 import { isValidISODate, monthBounds } from './dates.js';
 import { decimalesDe, esMonedaValida, maxDe, formatCantidad, MAX_CENTAVOS } from './money.js';
-import { ValidationError, normalizarNombre, NOTA_MAX } from './repo.js';
+import { ValidationError, normalizarNombre, NOTA_MAX, esUnEmoji } from './repo.js';
 
 // ---------- Tipos de cuenta ----------
 
@@ -133,7 +133,8 @@ export function validarMeta(m) {
   const nombre = typeof m.nombre === 'string' ? m.nombre.trim() : '';
   if (!nombre) errors.nombre = 'Poné para qué es (auto, moto, TV…).';
   else if (nombre.length > NOMBRE_META_MAX) errors.nombre = `Hasta ${NOMBRE_META_MAX} caracteres.`;
-  if (typeof m.emoji !== 'string' || !m.emoji.trim() || [...m.emoji.trim()].length > 8) errors.emoji = 'Elegí un emoji.';
+  if (typeof m.emoji !== 'string' || !m.emoji.trim()) errors.emoji = 'Elegí un emoji.';
+  else if (!esUnEmoji(m.emoji)) errors.emoji = 'Usá un solo emoji.';
   if (!MONEDAS_META.includes(m.moneda)) errors.moneda = 'Elegí pesos o dólares.';
   if (!Number.isSafeInteger(m.objetivo) || m.objetivo <= 0) errors.objetivo = 'Poné cuánto querés juntar.';
   else if (m.objetivo > MAX_CENTAVOS) errors.objetivo = 'El monto es demasiado grande.';

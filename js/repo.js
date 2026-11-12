@@ -37,6 +37,10 @@ function graphemes(s) {
   return [...s].length;
 }
 
+/** ¿Es exactamente un emoji? (no texto, no dos emojis) */
+export const esUnEmoji = (s) => typeof s === 'string' && graphemes(s.trim()) === 1
+  && /\p{Extended_Pictographic}|\p{Regional_Indicator}|⃣/u.test(s);
+
 export function validarCategoria(c) {
   const errors = {};
   if (!AMBITOS[c.ambito]) errors.ambito = 'Ámbito inválido.';

@@ -3,10 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-  <title>Gestor de Gastos</title>
+  <title>Finanzas</title>
+  <meta name="application-name" content="Finanzas">
+  <meta name="apple-mobile-web-app-title" content="Finanzas">
   <meta name="description" content="Gestor de gastos personal y de negocio. Funciona offline y guarda los datos solo en tu teléfono.">
-  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#171b20" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" id="theme-color" content="#ffffff">
+  <script>
+    // Tema y tamaño de letra guardados (Ajustes → Personalizar), aplicados antes de pintar
+    // para que no haya un parpadeo claro/oscuro. La app los vuelve a aplicar al arrancar.
+    (function () {
+      var p = {};
+      try { p = JSON.parse(localStorage.getItem('gg-prefs') || '{}') || {}; } catch (e) { /* sin localStorage */ }
+      var oscuro = p.tema === 'dark' || (p.tema !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+      var html = document.documentElement;
+      html.dataset.theme = oscuro ? 'dark' : 'light';
+      var letra = { grande: '112.5%', enorme: '125%' }[p.letra];
+      if (letra) html.style.fontSize = letra;
+      document.getElementById('theme-color').content = oscuro ? '#171b20' : '#ffffff';
+    })();
+  </script>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
@@ -17,7 +32,7 @@
   <a class="skip" href="#view">Saltar al contenido</a>
 
   <header class="appbar">
-    <h1 class="appbar-title">Gastos</h1>
+    <h1 class="appbar-title">Finanzas</h1>
     <div class="ambito-switch" role="group" aria-label="Ámbito">
       <button type="button" data-ambito="personal" aria-pressed="true">Personal</button>
       <button type="button" data-ambito="negocio" aria-pressed="false">Negocio</button>

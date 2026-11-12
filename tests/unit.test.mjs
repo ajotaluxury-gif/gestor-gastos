@@ -236,6 +236,10 @@ test('ahorros: conversión, metas y ahorro del mes', async () => {
   assert.ok(A.validarCuenta({ ambito: 'personal', tipo: 'banco', detalle: '', nota: '' }).detalle);
   assert.deepEqual(A.validarCuenta({ ambito: 'personal', tipo: 'efectivo', detalle: '', nota: '' }), {});
   assert.ok(A.validarAhorro({ ambito: 'personal', tipo: 'aporte', cuentaId: 'k', moneda: 'ARS', cantidad: 1, fecha: '2026-11-01', nota: '', pesos: 5 }).pesos);
+  const meta0 = { ambito: 'personal', nombre: 'Moto', moneda: 'ARS', objetivo: 100 };
+  assert.deepEqual(A.validarMeta({ ...meta0, emoji: '🛴' }), {});
+  assert.ok(A.validarMeta({ ...meta0, emoji: 'abc' }).emoji);
+  assert.ok(A.validarMeta({ ...meta0, emoji: '🛴🛵' }).emoji);
 });
 
 test('validarBackup v2: referencias de ahorros y fijos', async () => {
@@ -265,6 +269,11 @@ test('validarBackup v2: referencias de ahorros y fijos', async () => {
   assert.equal(r.data.pagos.length, 0);
   assert.equal(r.data.cotizaciones.length, 0);
   assert.equal(r.resumen.avisos.length, 3);
+  // Meta con texto como emoji (permitido hasta la 1.2): se restaura con 🎯 y aviso.
+  const m = b({ metas: [{ ...meta, emoji: 'abc' }] });
+  assert.equal(m.ok, true, m.errores.join());
+  assert.equal(m.data.metas[0].emoji, '🎯');
+  assert.equal(m.resumen.avisos.length, 1);
 });
 
 test('catálogo de emojis: válidos, buscables y compatibles', async () => {
@@ -292,6 +301,14 @@ test('catálogo de emojis: válidos, buscables y compatibles', async () => {
   // Nada de Emoji 14+ (en Android viejos sale como un cuadrado vacío).
   const nuevos = /[\u{1F6DD}-\u{1F6DF}\u{1F7F0}\u{1FA7B}\u{1FA7C}\u{1FAA9}-\u{1FAAF}\u{1FAB7}-\u{1FABF}\u{1FAC3}-\u{1FAC5}\u{1FAD7}-\u{1FADF}\u{1FAE0}-\u{1FAFF}]/u;
   for (const { emoji } of TODOS) assert.ok(!nuevos.test(emoji), `emoji demasiado nuevo: ${emoji}`);
+});
+
+test('personalización: valores desconocidos vuelven al original', async () => {
+  const { sanear, DEFAULT } = await import('../js/prefs.js');
+  assert.deepEqual(sanear(null), DEFAULT);
+  assert.deepEqual(sanear({ tema: 'dark', acentoPersonal: 'rosa', acentoNegocio: 'verde', letra: 'enorme' }),
+    { tema: 'dark', acentoPersonal: 'rosa', acentoNegocio: 'verde', letra: 'enorme' });
+  assert.deepEqual(sanear({ tema: '<script>', acentoPersonal: 'red;x', letra: 999, extra: 1 }), DEFAULT);
 });
 
 test('fechas', () => {

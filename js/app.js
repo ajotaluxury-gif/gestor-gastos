@@ -18,7 +18,9 @@ import * as ahorros from './views/ahorros.js';
 import { openMovimientoForm } from './views/form.js';
 import { openAhorroForm } from './views/ahorro-forms.js';
 import { avisarSiSeRestauro } from './views/datos.js';
+import { avisarSiSeBorro } from './views/config.js';
 import { alertasFijos } from './fijos.js';
+import { cargarPrefs, aplicarPrefs } from './prefs.js';
 
 const ROUTES = { movimientos, plan, presupuestos, ahorros, resumen, ajustes, categorias };
 const DEFAULT_ROUTE = 'movimientos';
@@ -94,6 +96,7 @@ async function actualizarAvisoPresupuestos() {
 
 function paintAmbito({ ambito }) {
   document.body.dataset.ambito = ambito;
+  aplicarPrefs(undefined, ambito); // el color de acento depende del ámbito
   for (const btn of document.querySelectorAll('.ambito-switch button')) {
     btn.setAttribute('aria-pressed', String(btn.dataset.ambito === ambito));
   }
@@ -106,7 +109,10 @@ function bindUI() {
   window.addEventListener('hashchange', render);
   addEventListener('data-changed', render);
   // Los gráficos toman los colores del tema: si cambia claro/oscuro, se vuelven a pintar.
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    aplicarPrefs(); // en "Automático" sigue al celular
+    render();
+  });
 
   const fab = document.getElementById('fab');
   fab.hidden = false;
@@ -139,6 +145,7 @@ async function start() {
   try {
     await openDB();
     await loadState();
+    await cargarPrefs();
   } catch (err) {
     console.error(err);
     $view.replaceChildren(errorBox(err, () => location.reload()));
@@ -149,6 +156,7 @@ async function start() {
   paintAmbito(getState());
   await render();
   avisarSiSeRestauro();
+  avisarSiSeBorro();
 
   // No bloquea el arranque; el resultado se ve en Ajustes.
   requestPersist();

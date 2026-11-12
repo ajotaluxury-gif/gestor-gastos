@@ -1,7 +1,8 @@
 // Exportar a CSV, backup en JSON y restauración.
 import { tx, req, getAll, getMeta, setMeta, DB_VERSION } from './db.js';
 import { DATA_STORES } from './migrations.js';
-import { validarMovimiento, validarCategoria, validarPresupuesto, normalizarNombre } from './repo.js';
+import { seedCategorias } from './seed.js';
+import { validarMovimiento, validarCategoria, validarPresupuesto, normalizarNombre, esUnEmoji } from './repo.js';
 import { validarCuenta, validarMeta, validarAhorro, monedaDeCuenta } from './ahorros.js';
 import { validarFijo } from './fijos.js';
 import { esMonedaValida, MAX_CENTAVOS } from './money.js';
@@ -239,6 +240,11 @@ export function validarBackup(backup) {
     const r = { ...pick(m, ['id', 'ambito', 'nombre', 'emoji', 'moneda', 'objetivo']), ...tiempos(m) };
     r.archivada = m?.archivada ? 1 : 0;
     if (!idOk(vistosMeta, r, `Meta ${i + 1}`)) return r;
+    // Hasta la 1.2 una meta podía tener texto como "emoji": se restaura con 🎯 en lugar de rechazar el backup.
+    if (typeof r.emoji === 'string' && r.emoji.trim() && !esUnEmoji(r.emoji)) {
+      avisos.push(`La meta "${typeof r.nombre === 'string' ? r.nombre : '?'}" tenía un emoji inválido: se restaura con 🎯.`);
+      r.emoji = '🎯';
+    }
     const e = validarMeta(r);
     if (Object.keys(e).length && !(Object.keys(e).length === 1 && e.objetivo === 'El monto es demasiado grande.')) {
       err(`Meta ${i + 1}: ${primerError(e)}`);
@@ -313,7 +319,7 @@ export function validarBackup(backup) {
   // Meta: solo preferencias conocidas.
   const meta = (Array.isArray(raw.meta) ? raw.meta : [])
     .filter((m) => m && typeof m.key === 'string' && !META_LOCAL.has(m.key)
-      && (m.key === 'ambitoActual' || META_PREFIJOS.some((p) => m.key.startsWith(p))))
+      && (m.key === 'ambitoActual' || m.key === 'prefs' || META_PREFIJOS.some((p) => m.key.startsWith(p))))
     .map((m) => ({ key: m.key, value: m.value }));
 
   if (errores.length) return { ok: false, errores };
@@ -352,6 +358,18 @@ export async function leerBackup(file) {
 export async function conteoActual() {
   const todos = await Promise.all(CONTEOS.map((s) => getAll(s)));
   return contarPorAmbito(Object.fromEntries(CONTEOS.map((s, i) => [s, todos[i]])));
+}
+
+/**
+ * Deja la app como recién instalada: borra todos los datos y la personalización,
+ * y vuelve a cargar las categorías iniciales. Todo en una transacción.
+ */
+export function borrarTodo() {
+  return tx([...STORES, 'meta'], 'readwrite', async (s) => {
+    await Promise.all([...STORES, 'meta'].map((n) => req(s[n].clear())));
+    seedCategorias(s.categorias);
+    await req(s.meta.put({ key: 'seededAt', value: new Date().toISOString() }));
+  });
 }
 
 /**

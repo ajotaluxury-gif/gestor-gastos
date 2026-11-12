@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Gestor de Gastos",
-  "short_name": "Gastos",
+  "name": "Finanzas",
+  "short_name": "Finanzas",
   "description": "Gestor de gastos personal y de negocio. Funciona offline y guarda los datos solo en tu teléfono.",
   "lang": "es-AR",
   "dir": "ltr",
@@ -10,7 +10,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f6f7f9",
-  "theme_color": "#0f766e",
+  "theme_color": "#7c3aed",
   "categories": ["finance", "productivity"],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

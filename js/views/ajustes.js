@@ -5,6 +5,7 @@ import { persistStatus, requestPersist, storageUsage, formatBytes } from '../sto
 import { getAppVersion } from '../sw-client.js';
 import { toast } from '../toast.js';
 import { tarjetaDatos } from './datos.js';
+import { openPersonalizar, openBorrarTodo, resumenPrefs } from './config.js';
 
 const PERSIST_INFO = {
   granted: ['ok', '✅', 'Datos protegidos', 'Android no va a borrar tus datos aunque falte espacio.'],
@@ -49,6 +50,11 @@ export async function render(state) {
   return h('section', null,
     h('h2', null, 'Ajustes'),
 
+    h('div', { class: 'card' },
+      h('h3', null, 'Personalizar'),
+      h('p', { class: 'muted hint' }, resumenPrefs()),
+      h('button', { class: 'btn btn-block', type: 'button', onClick: openPersonalizar }, '🎨 Personalizar la app')),
+
     datos,
 
     h('div', { class: 'card' },
@@ -70,5 +76,10 @@ export async function render(state) {
       h('h3', null, 'Acerca de'),
       h('dl', { class: 'kv' },
         h('dt', null, 'Versión de la app'), h('dd', null, version ?? '— (sin Service Worker activo)'),
-        h('dt', null, 'Esquema de datos'), h('dd', null, `v${DB_VERSION}`))));
+        h('dt', null, 'Esquema de datos'), h('dd', null, `v${DB_VERSION}`))),
+
+    h('div', { class: 'card danger-card' },
+      h('h3', null, 'Zona de peligro'),
+      h('p', { class: 'muted hint' }, 'Borra todo lo cargado en los dos ámbitos y deja la app como recién instalada.'),
+      h('button', { class: 'btn btn-danger btn-block', type: 'button', onClick: openBorrarTodo }, '🗑️ Borrar todos los datos')));
 }

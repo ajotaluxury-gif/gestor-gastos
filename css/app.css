@@ -1,6 +1,8 @@
 /* ===== Tokens ===== */
+/* El tema lo resuelve JS (Personalizar → Tema: automático/claro/oscuro) y lo deja en
+   <html data-theme="light|dark">. El script del <head> lo pone antes de pintar. */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --bg: #f6f7f9;
   --surface: #ffffff;
   --surface-2: #eef0f3;
@@ -31,8 +33,8 @@ body[data-ambito="negocio"] {
   --accent-soft: #e0e7ff;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+:root[data-theme="dark"] {
+    color-scheme: dark;
     --bg: #0e1114;
     --surface: #171b20;
     --surface-2: #1f252c;
@@ -51,12 +53,11 @@ body[data-ambito="negocio"] {
     --gasto: #f97066;
     --ingreso: #47cd89;
     --shadow: 0 1px 2px rgb(0 0 0 / .4);
-  }
-  body[data-ambito="negocio"] {
+}
+:root[data-theme="dark"] body[data-ambito="negocio"] {
     --accent: #a5b4fc;
     --accent-contrast: #111536;
     --accent-soft: #252a52;
-  }
 }
 
 /* ===== Base ===== */
@@ -68,7 +69,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 1rem/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
   min-height: 100dvh;
 }
@@ -96,6 +97,8 @@ a { color: var(--accent); }
   border-bottom: 1px solid var(--border);
 }
 .appbar-title { margin: 0; font-size: 1.25rem; font-weight: 700; }
+/* Si título + selector no entran (pantalla angosta o letra grande), el selector baja de renglón. */
+.appbar { flex-wrap: wrap; row-gap: 6px; }
 
 .ambito-switch {
   display: inline-flex; padding: 3px; gap: 2px;
@@ -186,6 +189,7 @@ dl.kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
   color: var(--muted); text-decoration: none; font-size: .75rem; font-weight: 600;
 }
 .tabbar .tab-icon { font-size: 1.3rem; line-height: 1; filter: grayscale(1); opacity: .7; }
+.tabbar a { min-width: 0; overflow: hidden; } /* con letra grande, ninguna pestaña se sale de su lugar */
 .tabbar .tab-label { max-width: 100%; padding: 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Con 5 pestañas, "Movimientos" (la etiqueta más larga, ~6,1 veces el tamaño de letra) tiene que
    entrar en un quinto del ancho: la letra se achica en celulares angostos y no pasa del tamaño normal. */
@@ -219,11 +223,9 @@ dl.kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .toast.leaving { opacity: 0; transition: opacity .2s; }
 @keyframes toast-in { from { transform: translateY(8px); opacity: 0; } }
 
-@media (prefers-color-scheme: dark) {
-  .toast { background: #e8eaed; color: #14171a; }
-  .toast-error { background: #fda29b; color: #3d0b07; }
-  .toast-action { color: #0f766e; }
-}
+[data-theme="dark"] .toast { background: #e8eaed; color: #14171a; }
+[data-theme="dark"] .toast-error { background: #fda29b; color: #3d0b07; }
+[data-theme="dark"] .toast-action { color: #0f766e; }
 
 /* ===== Utilidades ===== */
 .sr-only {
@@ -513,9 +515,7 @@ details.archived .cat-badge { filter: grayscale(.8); }
 .tab-badge.level-excedido { background: var(--danger); color: #fff; }
 
 .toast-warn { background: #7a4a00; }
-@media (prefers-color-scheme: dark) {
-  .toast-warn { background: #fdb022; color: #2a1a00; }
-}
+[data-theme="dark"] .toast-warn { background: #fdb022; color: #2a1a00; }
 
 /* ===== Tus datos / backup ===== */
 .datos h4 { margin: 16px 0 8px; font-size: .95rem; }
@@ -605,6 +605,16 @@ table.compare th[scope="colgroup"] { text-align: center; }
 .cotiz-fecha { font-size: .75rem; }
 
 .chips-tipo { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+
+/* ===== Personalizar / zona de peligro ===== */
+.field-label { font-weight: 600; font-size: .9rem; }
+.seg-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.seg-3 .seg-opt span { padding: 0 4px; text-align: center; font-size: .9rem; }
+.danger-card { border-color: var(--danger); }
+.danger-card h3 { color: var(--danger); }
+.btn-danger:disabled { opacity: .55; }
+/* En oscuro el rojo es claro: texto oscuro para que se lea (blanco daba contraste 2,6:1). */
+[data-theme="dark"] .btn-danger { color: #2a0a07; }
 
 .sugerencias { display: flex; flex-wrap: wrap; gap: 6px; }
 .sugerencia {
