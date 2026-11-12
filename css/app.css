@@ -598,6 +598,14 @@ table.compare th[scope="colgroup"] { text-align: center; }
 .cotiz-fecha { font-size: .75rem; }
 
 .chips-tipo { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+
+.sugerencias { display: flex; flex-wrap: wrap; gap: 6px; }
+.sugerencia {
+  min-height: 40px; padding: 0 12px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface-2); font-size: .85rem; font-weight: 600; cursor: pointer;
+}
+.sugerencia[aria-pressed="true"] { background: var(--accent); color: var(--accent-contrast); border-color: transparent; }
 .upper { text-transform: uppercase; }
 
 @media (prefers-reduced-motion: reduce) {

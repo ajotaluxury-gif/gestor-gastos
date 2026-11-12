@@ -51,12 +51,18 @@ async function cuentaForm({ id }) {
 
   const errs = fieldErrors(['tipo', 'detalle', 'nota']);
   const detalleLabel = h('label', { for: 'k-detalle' });
-  const sugerencias = h('datalist', { id: 'k-sugerencias' });
+  // Sugerencias como botones visibles (no <datalist>: en Chrome de Android su flechita no despliega nada).
+  const sugerencias = h('div', { class: 'sugerencias', role: 'group', 'aria-label': 'Sugerencias' });
   const detalleInput = h('input', {
-    id: 'k-detalle', class: 'input', type: 'text', maxlength: 40, list: 'k-sugerencias',
+    id: 'k-detalle', class: 'input', type: 'text', maxlength: 40,
     autocomplete: 'off', enterkeyhint: 'done', value: cuenta?.detalle || null,
     disabled: cuenta?.tipo === 'cripto',
   });
+  const marcarSugerencia = () => {
+    const v = detalleInput.value.trim().toLowerCase();
+    for (const b of sugerencias.children) b.setAttribute('aria-pressed', String(b.dataset.valor.toLowerCase() === v));
+  };
+  detalleInput.addEventListener('input', marcarSugerencia);
   const notaInput = h('input', {
     id: 'k-nota', class: 'input', type: 'text', maxlength: 60, autocomplete: 'off', enterkeyhint: 'done',
     placeholder: 'Ej: caja de ahorro, plazo fijo, en Binance', value: cuenta?.nota || null,
@@ -68,8 +74,14 @@ async function cuentaForm({ id }) {
   function pintarTipo() {
     const t = A.TIPOS_CUENTA[tipo];
     detalleLabel.textContent = t.detalleLabel;
-    sugerencias.replaceChildren(...t.sugerencias.map((s) => h('option', { value: s })));
-    detalleInput.placeholder = `Ej: ${t.sugerencias[0]}`;
+    sugerencias.replaceChildren(...t.sugerencias.map((s) => h('button', {
+      type: 'button', class: 'sugerencia', 'data-valor': s,
+      onClick: () => { detalleInput.value = s; errs.clear('detalle'); marcarSugerencia(); },
+    }, s)));
+    // Editando una cripto, la sigla no se puede cambiar: no tiene sentido ofrecer otras.
+    sugerencias.hidden = detalleInput.disabled;
+    marcarSugerencia();
+    detalleInput.placeholder = t.detalleRequerido ? `Elegí una de abajo o escribila` : `Ej: ${t.sugerencias[0]}`;
     detalleInput.classList.toggle('upper', tipo === 'cripto');
     monedaHint.textContent = t.moneda
       ? `Se guarda en ${t.moneda === 'ARS' ? 'pesos' : 'dólares'}.`
