@@ -1,6 +1,6 @@
 // Piezas de interfaz compartidas entre vistas.
 import { h } from './dom.js';
-import { setMes } from './state.js';
+import { setMes, getState } from './state.js';
 import { formatARS } from './money.js';
 import { addMonths, currentMonth, monthLabel } from './dates.js';
 
@@ -16,10 +16,12 @@ export function totalesCard({ ingresos, gastos, balance }) {
 
 export function monthNav(mes) {
   const esActual = mes === currentMonth();
+  // Se usa el mes del estado (no el de este dibujo): toques rápidos antes de redibujar no se pierden.
+  const mover = (n) => setMes(addMonths(getState().mes, n));
   return h('div', { class: 'month-nav' },
-    h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Mes anterior', onClick: () => setMes(addMonths(mes, -1)) }, '‹'),
+    h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Mes anterior', onClick: () => mover(-1) }, '‹'),
     h('div', { class: 'month-label' },
       h('h2', null, monthLabel(mes)),
       !esActual && h('button', { class: 'link-btn', type: 'button', onClick: () => setMes(currentMonth()) }, 'Ir al mes actual')),
-    h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Mes siguiente', onClick: () => setMes(addMonths(mes, 1)) }, '›'));
+    h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Mes siguiente', onClick: () => mover(1) }, '›'));
 }

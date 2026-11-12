@@ -21,6 +21,20 @@ export function h(tag, props, ...children) {
   return el;
 }
 
+/**
+ * Como el replaceChildren/append nativo, pero ignora null/false/undefined
+ * (los nativos los convierten en el texto "null"/"false").
+ */
+export function setChildren(el, ...children) {
+  el.replaceChildren(...children.flat(Infinity).filter((c) => c != null && c !== false));
+  return el;
+}
+
+export function appendChildren(el, ...children) {
+  el.append(...children.flat(Infinity).filter((c) => c != null && c !== false));
+  return el;
+}
+
 /** Color de categoría seguro para usar en estilos (#rrggbb o gris por defecto). */
 export const safeColor = (c) => (/^#[0-9a-f]{6}$/i.test(c ?? '') ? c : '#64748b');
 

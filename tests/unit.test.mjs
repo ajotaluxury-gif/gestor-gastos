@@ -18,10 +18,12 @@ test('parseMonto acepta formatos argentinos', () => {
   ok('$ 1.234,56', 123456);
   ok(' 15 ', 1500);
   ok('007', 700);
+  ok('9.999.999.999,99', 999999999999);   // tope por movimiento
 });
 
 test('parseMonto rechaza basura', () => {
-  for (const s of ['', '   ', 'abc', '1,2,3', '12,345', '1.23.4', '-5', '0', '0,00', ',5', '1234567890123']) {
+  for (const s of ['', '   ', 'abc', '1,2,3', '12,345', '1.23.4', '-5', '0', '0,00', ',5', '1234567890123',
+    '10.000.000.000', '99999999999', '1e5', '１２３']) {
     assert.equal(parseMonto(s).ok, false, s);
   }
 });
@@ -141,6 +143,17 @@ test('validarBackup', async () => {
   assert.match(conData({ movimientos: [mov, mov] }).errores[0], /id repetido/);
   assert.match(conData({ presupuestos: [pres, { ...pres, id: 'p2' }] }).errores[0], /misma categoría/);
   assert.match(conData({ categorias: [{ ...cat, emoji: 'xx' }] }).errores[0], /emoji/);
+  // Nombre repetido: se restaura renombrado y con aviso (no se rechaza todo el backup).
+  const dup = conData({ categorias: [cat, { ...cat, id: 'c2', nombre: 'SÚPER' }, { ...cat, id: 'c3' }] });
+  assert.equal(dup.ok, true, dup.errores.join());
+  assert.deepEqual(dup.data.categorias.map((c) => c.nombre), ['Súper', 'SÚPER (2)', 'Súper (3)']);
+  assert.equal(dup.resumen.avisos.length, 2);
+  // Un monto guardado por una versión anterior (más alto que el tope actual) se restaura igual.
+  assert.equal(conData({ movimientos: [{ ...mov, montoCentavos: 10 ** 13 }] }).ok, true);
+  assert.equal(conData({ movimientos: [{ ...mov, montoCentavos: 2 ** 53 }] }).ok, false);
+  // Fecha de exportación inválida: se ignora en lugar de mostrar basura.
+  assert.equal(validarBackup({ ...base, exportedAt: 'pepe' }).resumen.exportedAt, null);
+  assert.equal(validarBackup({ ...base, exportedAt: 12345 }).resumen.exportedAt, null);
 });
 
 test('fechas', () => {

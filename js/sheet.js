@@ -29,9 +29,17 @@ export function openSheet({ title, body, footer = [], onSubmit }) {
       h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Cerrar', onClick: close }, '✕')),
     h('div', { class: 'sheet-body' }, body),
     h('div', { class: 'sheet-foot' }, footer));
-  form.addEventListener('submit', (e) => {
+  // Un solo envío a la vez: Enter repetido o doble toque no guardan dos veces.
+  let enviando = false;
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    onSubmit?.();
+    if (enviando) return;
+    enviando = true;
+    try {
+      await onSubmit?.();
+    } finally {
+      enviando = false;
+    }
   });
 
   dialog = h('dialog', { class: 'sheet', 'aria-labelledby': titleId }, form);
@@ -43,6 +51,9 @@ export function openSheet({ title, body, footer = [], onSubmit }) {
     dialog.addEventListener('close', () => {
       removeEventListener('popstate', onPopState);
       if (pushed && history.state?.sheet === id) goBack();
+      // Los avisos que se mostraron dentro de la hoja (p. ej. "Hay una actualización") no se pierden.
+      const pendientes = dialog.querySelectorAll('.toasts-dialog .toast:not(.leaving)');
+      if (pendientes.length) document.getElementById('toasts').append(...pendientes);
       dialog.remove();
       resolve();
     }, { once: true });

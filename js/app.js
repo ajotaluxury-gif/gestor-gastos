@@ -52,10 +52,13 @@ async function render() {
 }
 
 /** Globito en la pestaña Presupuestos con cuántos están en alerta este mes. */
+let badgeToken = 0;
 async function actualizarAvisoPresupuestos() {
   const tab = document.querySelector('.tabbar a[data-route="presupuestos"]');
+  const token = ++badgeToken;
   try {
     const filas = await resumenPresupuestos(getState().ambito, currentMonth());
+    if (token !== badgeToken) return; // llegó tarde: ya hay un cálculo más nuevo
     const excedidos = filas.filter((f) => f.nivel === 'excedido').length;
     const alertas = filas.filter((f) => f.nivel !== 'ok').length;
     let badge = tab.querySelector('.tab-badge');

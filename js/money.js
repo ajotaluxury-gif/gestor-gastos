@@ -9,8 +9,10 @@ export const formatARS = (centavos) => currencyFmt.format(centavos / 100);
 /** 123456 → "1.234,56" (sin símbolo; para inputs y CSV) */
 export const formatNumber = (centavos) => numberFmt.format(centavos / 100);
 
-// Hasta 999.999.999.999,99: sobra y sigue siendo un entero seguro.
-const MAX_ENTEROS = 12;
+// Hasta 9.999.999.999,99 por movimiento. Con este tope, la suma de cientos de miles
+// de movimientos sigue siendo un entero exacto en JavaScript (Number.MAX_SAFE_INTEGER).
+const MAX_ENTEROS = 10;
+export const MAX_CENTAVOS = 10 ** (MAX_ENTEROS + 2) - 1;
 
 /**
  * Convierte lo que escribe el usuario a centavos.

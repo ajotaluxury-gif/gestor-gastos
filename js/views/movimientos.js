@@ -1,5 +1,5 @@
 // Listado de movimientos: por mes, o búsqueda con filtros sobre todo el historial.
-import { h, emptyState, safeColor } from '../dom.js';
+import { h, emptyState, safeColor, setChildren } from '../dom.js';
 import {
   listCategorias, listMovimientos, listMovimientosMes, totales, ordenarMovimientos,
 } from '../repo.js';
@@ -13,6 +13,7 @@ import { notifyDataChanged } from '../state.js';
 // Los filtros sobreviven a cambios de pestaña mientras la app está abierta.
 const filtros = { q: '', tipo: '', categoriaId: '', desde: '', hasta: '' };
 let panelAbierto = false;
+const PAGINA = 200;
 
 /** Abre el listado ya filtrado (por ejemplo, desde el resumen). */
 export function verMovimientos({ categoriaId = '', tipo = '', desde = '', hasta = '' }) {
@@ -173,7 +174,20 @@ export async function render(state) {
         : emptyState('📋', 'No hay movimientos en este mes', 'Tocá + para cargar el primero.'));
       return;
     }
-    results.replaceChildren(totalesCard(totales(movs)), lista(movs, catMap));
+    // Se dibujan de a PAGINA filas: miles de nodos de una vez traban un celular.
+    let visibles = PAGINA;
+    const listaSlot = h('div');
+    const pintarLista = () => {
+      const resto = movs.length - visibles;
+      setChildren(listaSlot,
+        lista(movs.slice(0, visibles), catMap),
+        resto > 0 && h('button', {
+          class: 'btn btn-block', type: 'button',
+          onClick: () => { visibles += PAGINA; pintarLista(); },
+        }, `Mostrar más (${resto} restantes)`));
+    };
+    pintarLista();
+    results.replaceChildren(totalesCard(totales(movs)), listaSlot);
   }
 
   function filtrosHeader(cantidad) {

@@ -129,7 +129,9 @@ function tablaConteo(backup, actual) {
 
 function confirmarRestauracion(nombre, res, actual) {
   const { resumen } = res;
-  const fecha = resumen.exportedAt ? toDisplay(resumen.exportedAt.slice(0, 10)) : 'fecha desconocida';
+  const fecha = resumen.exportedAt
+    ? `Backup del ${toDisplay(resumen.exportedAt.slice(0, 10))}`
+    : 'Backup sin fecha de exportación';
   const check = h('input', { type: 'checkbox', id: 'r-ok' });
   const restoreBtn = h('button', { class: 'btn btn-danger', type: 'submit', disabled: true }, 'Reemplazar mis datos');
   check.addEventListener('change', () => { restoreBtn.disabled = !check.checked; });
@@ -152,8 +154,13 @@ function confirmarRestauracion(nombre, res, actual) {
       }
     },
     body: [
-      h('p', null, h('strong', null, nombre), h('br'), h('span', { class: 'muted' }, `Backup del ${fecha}`)),
+      h('p', null, h('strong', null, nombre), h('br'), h('span', { class: 'muted' }, fecha)),
       tablaConteo(resumen.porAmbito, actual),
+      resumen.avisos?.length > 0 && h('div', { class: 'status status-warn' },
+        h('span', { class: 'status-icon', 'aria-hidden': 'true' }, 'ℹ️'),
+        h('div', null,
+          h('strong', null, 'Ajustes al restaurar'),
+          h('ul', { class: 'error-list' }, resumen.avisos.map((a) => h('li', null, a))))),
       h('div', { class: 'status status-warn' },
         h('span', { class: 'status-icon', 'aria-hidden': 'true' }, '⚠️'),
         h('div', null,

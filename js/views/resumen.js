@@ -1,5 +1,5 @@
 // Resumen mensual: totales, comparación con el mes anterior, gráfico por categoría y tendencia.
-import { h, emptyState, safeColor } from '../dom.js';
+import { h, emptyState, safeColor, appendChildren } from '../dom.js';
 import { setMes, notifyDataChanged } from '../state.js';
 import {
   listCategorias, listMovimientos, totales, sumarPorCategoria, agruparResto, variacion,
@@ -46,7 +46,7 @@ export async function render(state) {
     section.append(emptyState('📊', `Sin movimientos en ${monthName(mes)}`,
       'Cargá movimientos con el botón + para ver el resumen.'));
   } else {
-    section.append(
+    appendChildren(section,
       totalesCard(totales(delMes)),
       comparacion(delMes, porMes.get(addMonths(mes, -1)), mes),
       porCategoria(delMes, catMap, mes));
@@ -180,11 +180,12 @@ function tendencia(porMes, mesActual) {
   });
 
   // Tabla equivalente para lectores de pantalla.
-  const tabla = h('table', { class: 'sr-only' },
+  // (Envuelta en un div: una <table> no respeta el ancho de 1px de .sr-only y desborda la página.)
+  const tabla = h('div', { class: 'sr-only' }, h('table', null,
     h('caption', null, `Ingresos y gastos, últimos ${MESES_TENDENCIA} meses`),
     h('thead', null, h('tr', null, h('th', null, 'Mes'), h('th', null, 'Ingresos'), h('th', null, 'Gastos'))),
     h('tbody', null, meses.map((ym, i) => h('tr', null,
-      h('th', null, monthLabel(ym)), h('td', null, formatARS(datos[i].ingresos)), h('td', null, formatARS(datos[i].gastos))))));
+      h('th', null, monthLabel(ym)), h('td', null, formatARS(datos[i].ingresos)), h('td', null, formatARS(datos[i].gastos)))))));
 
   mountChart(canvas, (Chart, c) => new Chart(canvas, {
     type: 'bar',

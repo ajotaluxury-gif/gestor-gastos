@@ -3,6 +3,7 @@ import { tx, req, get, getAll } from './db.js';
 import { stamp } from './records.js';
 import { isValidISODate, monthBounds } from './dates.js';
 import { AMBITOS } from './state.js';
+import { MAX_CENTAVOS } from './money.js';
 
 export const TIPOS = ['gasto', 'ingreso'];
 export const NOTA_MAX = 200;
@@ -21,7 +22,7 @@ export class ValidationError extends Error {
 export const NOMBRE_MAX = 40;
 
 const porOrden = (a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es');
-const normalizarNombre = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+export const normalizarNombre = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 
 export async function listCategorias(ambito) {
   const all = await getAll('categorias', 'ambito', ambito);
@@ -144,6 +145,15 @@ export function borrarCategoria(id) {
 
 export const restaurarCategoria = ({ categoria, presupuesto }) =>
   tx(['categorias', 'presupuestos'], 'readwrite', async ({ categorias, presupuestos }) => {
+    // Mientras tanto pudo haberse creado otra con el mismo nombre.
+    const repetida = (await req(categorias.index('ambito').getAll(categoria.ambito))).find((c) =>
+      c.id !== categoria.id && c.tipo === categoria.tipo
+      && normalizarNombre(c.nombre) === normalizarNombre(categoria.nombre));
+    if (repetida) {
+      throw new ValidationError({
+        general: `No se puede deshacer: ya existe otra categoría "${repetida.nombre}". Renombrala primero.`,
+      });
+    }
     await req(categorias.put(categoria));
     if (presupuesto) await req(presupuestos.put(presupuesto));
   });
@@ -159,12 +169,16 @@ export const listMovimientosMes = (ambito, ym) => listMovimientos(ambito, ...mon
 
 export const getMovimiento = (id) => get('movimientos', id);
 
-/** Devuelve un objeto campo → mensaje (vacío si está todo bien). */
-export function validarMovimiento(m) {
+/**
+ * Devuelve un objeto campo → mensaje (vacío si está todo bien).
+ * `tope: false` no aplica el máximo por movimiento (para datos ya guardados por versiones anteriores).
+ */
+export function validarMovimiento(m, { tope = true } = {}) {
   const errors = {};
   if (!AMBITOS[m.ambito]) errors.ambito = 'Ámbito inválido.';
   if (!TIPOS.includes(m.tipo)) errors.tipo = 'Elegí si es gasto o ingreso.';
   if (!Number.isSafeInteger(m.montoCentavos) || m.montoCentavos <= 0) errors.monto = 'Ingresá un monto mayor a cero.';
+  else if (tope && m.montoCentavos > MAX_CENTAVOS) errors.monto = 'El monto es demasiado grande.';
   if (!m.categoriaId) errors.categoria = 'Elegí una categoría.';
   if (!isValidISODate(m.fecha)) errors.fecha = 'Elegí una fecha válida.';
   if (typeof m.nota !== 'string') errors.nota = 'Nota inválida.';
@@ -206,9 +220,18 @@ export function borrarMovimiento(id) {
   });
 }
 
-/** Vuelve a guardar un registro tal cual estaba (deshacer borrado). */
+/**
+ * Vuelve a guardar un registro tal cual estaba (deshacer borrado).
+ * Si mientras tanto se borró su categoría, no se restaura: quedaría huérfano.
+ */
 export const restaurarMovimiento = (record) =>
-  tx('movimientos', 'readwrite', ({ movimientos }) => req(movimientos.put(record)));
+  tx(['movimientos', 'categorias'], 'readwrite', async ({ movimientos, categorias }) => {
+    const cat = await req(categorias.get(record.categoriaId));
+    if (!cat || cat.ambito !== record.ambito || cat.tipo !== record.tipo) {
+      throw new ValidationError({ general: 'No se puede deshacer: la categoría de ese movimiento ya no existe.' });
+    }
+    await req(movimientos.put(record));
+  });
 
 // ---------- Presupuestos ----------
 // Un presupuesto es un tope mensual fijo para una categoría de gasto (único por categoría).
@@ -225,11 +248,12 @@ export function estadoPresupuesto(gastado, limite) {
 
 export const listPresupuestos = (ambito) => getAll('presupuestos', 'ambito', ambito);
 
-export function validarPresupuesto(p) {
+export function validarPresupuesto(p, { tope = true } = {}) {
   const errors = {};
   if (!AMBITOS[p.ambito]) errors.ambito = 'Ámbito inválido.';
   if (!p.categoriaId) errors.categoria = 'Elegí una categoría.';
   if (!Number.isSafeInteger(p.montoCentavos) || p.montoCentavos <= 0) errors.monto = 'Ingresá un monto mayor a cero.';
+  else if (tope && p.montoCentavos > MAX_CENTAVOS) errors.monto = 'El monto es demasiado grande.';
   return errors;
 }
 
@@ -258,7 +282,15 @@ export function borrarPresupuesto(id) {
 }
 
 export const restaurarPresupuesto = (record) =>
-  tx('presupuestos', 'readwrite', ({ presupuestos }) => req(presupuestos.put(record)));
+  tx(['presupuestos', 'categorias'], 'readwrite', async ({ presupuestos, categorias }) => {
+    const cat = await req(categorias.get(record.categoriaId));
+    if (!cat) throw new ValidationError({ general: 'No se puede deshacer: la categoría ya no existe.' });
+    const otro = await req(presupuestos.index('categoriaId').get(record.categoriaId));
+    if (otro && otro.id !== record.id) {
+      throw new ValidationError({ general: `No se puede deshacer: "${cat.nombre}" ya tiene otro presupuesto.` });
+    }
+    await req(presupuestos.put(record));
+  });
 
 /**
  * Presupuestos activos de un mes con lo gastado y su estado, más urgentes primero.

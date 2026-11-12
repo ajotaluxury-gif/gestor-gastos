@@ -7,12 +7,23 @@ import {
   validarMovimiento, cruceDeUmbral, ValidationError, NOTA_MAX,
 } from '../repo.js';
 import { parseMonto, formatNumber, formatARS } from '../money.js';
-import { todayISO, toDisplay } from '../dates.js';
+import { todayISO, toDisplay, currentMonth, lastDayOfMonth } from '../dates.js';
 import { toast, toastError } from '../toast.js';
 import { openSheet, fieldErrors } from '../sheet.js';
 
 let abierto = false;
 const pctFmt = new Intl.NumberFormat('es-AR', { style: 'percent', maximumFractionDigits: 0 });
+
+/**
+ * Hoy, si se está viendo el mes actual. Si se está viendo otro mes (p. ej. para cargar
+ * algo olvidado), una fecha dentro de ese mes: así lo cargado aparece donde uno está mirando.
+ */
+function fechaPorDefecto() {
+  const { mes } = getState();
+  const actual = currentMonth();
+  if (mes === actual) return todayISO();
+  return mes < actual ? lastDayOfMonth(mes) : `${mes}-01`;
+}
 
 const ultimaKey = (ambito, tipo) => `ultimaCat:${ambito}:${tipo}`;
 const safeMeta = (key) => getMeta(key).catch(() => null);
@@ -60,7 +71,7 @@ async function abrir(id) {
     autocomplete: 'off', enterkeyhint: 'done', placeholder: '0,00',
     value: mov ? formatNumber(mov.montoCentavos) : null,
   });
-  const fechaInput = h('input', { id: 'f-fecha', class: 'input', type: 'date', value: mov?.fecha ?? todayISO() });
+  const fechaInput = h('input', { id: 'f-fecha', class: 'input', type: 'date', value: mov?.fecha ?? fechaPorDefecto() });
   const notaInput = h('input', {
     id: 'f-nota', class: 'input', type: 'text', maxlength: NOTA_MAX, autocomplete: 'off',
     enterkeyhint: 'done', placeholder: 'Opcional', value: mov?.nota || null,

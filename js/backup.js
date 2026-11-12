@@ -1,6 +1,6 @@
 // Exportar a CSV, backup en JSON y restauración.
 import { tx, req, getAll, getMeta, setMeta, DB_VERSION } from './db.js';
-import { validarMovimiento, validarCategoria, validarPresupuesto } from './repo.js';
+import { validarMovimiento, validarCategoria, validarPresupuesto, normalizarNombre } from './repo.js';
 import { AMBITOS } from './state.js';
 import { toDisplay, todayISO } from './dates.js';
 
@@ -139,6 +139,7 @@ export function validarBackup(backup) {
   }
 
   const errores = [];
+  const avisos = [];
   const err = (msg) => { if (errores.length < MAX_ERRORES) errores.push(msg); };
   const now = new Date().toISOString();
   const tiempos = (r) => ({
@@ -149,6 +150,7 @@ export function validarBackup(backup) {
 
   // Categorías
   const catIds = new Map();
+  const catNombres = new Set();
   const categorias = raw.categorias.map((c, i) => {
     const r = { ...pick(c ?? {}, ['id', 'ambito', 'tipo', 'nombre', 'emoji', 'color']), ...tiempos(c ?? {}) };
     r.archivada = c?.archivada ? 1 : 0;
@@ -156,8 +158,20 @@ export function validarBackup(backup) {
     const e = validarCategoria(r);
     if (!esTexto(r.id)) err(`Categoría ${i + 1}: falta el id.`);
     else if (catIds.has(r.id)) err(`Categoría ${i + 1}: id repetido.`);
-    else if (Object.keys(e).length) err(`Categoría ${i + 1} ("${r.nombre ?? '?'}"): ${primerError(e)}`);
-    else catIds.set(r.id, r);
+    else if (Object.keys(e).length) err(`Categoría ${i + 1} ("${typeof r.nombre === 'string' ? r.nombre : '?'}"): ${primerError(e)}`);
+    else {
+      // Nombre repetido: no es grave, se renombra ("Viajes (2)") y se avisa.
+      const clave = (n) => `${r.ambito}|${r.tipo}|${normalizarNombre(n)}`;
+      if (catNombres.has(clave(r.nombre))) {
+        const original = r.nombre;
+        let n = 2;
+        while (catNombres.has(clave(`${original} (${n})`))) n++;
+        r.nombre = `${original} (${n})`;
+        avisos.push(`La categoría "${original}" estaba repetida: se restaura como "${r.nombre}".`);
+      }
+      catNombres.add(clave(r.nombre));
+      catIds.set(r.id, r);
+    }
     return r;
   });
 
@@ -169,7 +183,8 @@ export function validarBackup(backup) {
       nota: typeof m?.nota === 'string' ? m.nota : '',
       ...tiempos(m ?? {}),
     };
-    const e = validarMovimiento(r);
+    // Sin el tope actual por movimiento: lo que una versión anterior guardó se tiene que poder restaurar.
+    const e = validarMovimiento(r, { tope: false });
     const cat = catIds.get(r.categoriaId);
     if (!esTexto(r.id)) err(`Movimiento ${i + 1}: falta el id.`);
     else if (movIds.has(r.id)) err(`Movimiento ${i + 1}: id repetido.`);
@@ -184,7 +199,7 @@ export function validarBackup(backup) {
   const presPorCat = new Set();
   const presupuestos = raw.presupuestos.map((p, i) => {
     const r = { ...pick(p ?? {}, ['id', 'ambito', 'categoriaId', 'montoCentavos']), ...tiempos(p ?? {}) };
-    const e = validarPresupuesto(r);
+    const e = validarPresupuesto(r, { tope: false });
     const cat = catIds.get(r.categoriaId);
     if (!esTexto(r.id)) err(`Presupuesto ${i + 1}: falta el id.`);
     else if (presIds.has(r.id)) err(`Presupuesto ${i + 1}: id repetido.`);
@@ -204,7 +219,10 @@ export function validarBackup(backup) {
 
   if (errores.length) return { ok: false, errores };
 
-  const resumen = { exportedAt: esTexto(backup.exportedAt) ? backup.exportedAt : null, porAmbito: {} };
+  const exportedAt = esTexto(backup.exportedAt) && !Number.isNaN(Date.parse(backup.exportedAt))
+    ? new Date(backup.exportedAt).toISOString()
+    : null;
+  const resumen = { exportedAt, avisos, porAmbito: {} };
   for (const a of Object.keys(AMBITOS)) {
     resumen.porAmbito[a] = {
       movimientos: movimientos.filter((m) => m.ambito === a).length,

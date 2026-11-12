@@ -196,6 +196,7 @@ dl.kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   padding: 0 16px; pointer-events: none;
 }
+.toasts-dialog { bottom: calc(84px + var(--safe-bottom)); }
 .toast {
   display: flex; align-items: center; gap: 12px;
   width: 100%; max-width: 480px;
@@ -279,6 +280,7 @@ select.input { padding-right: 4px; }
 .seg-opt input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 1px; }
 
 .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.chip-name { max-width: 100%; overflow-wrap: anywhere; hyphens: auto; }
 .chip {
   position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
@@ -420,7 +422,7 @@ details.archived .cat-badge { filter: grayscale(.8); }
 }
 .emoji-btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 
-.swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.swatches { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .swatch {
   position: relative; display: grid; place-items: center;
   aspect-ratio: 1; max-height: 52px; border-radius: 50%;
@@ -459,7 +461,8 @@ details.archived .cat-badge { filter: grayscale(.8); }
 
 /* ===== Presupuestos ===== */
 .presupuestos .month-nav { margin-bottom: 12px; }
-.budget-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.budget-head { display: flex; justify-content: space-between; align-items: baseline; gap: 2px 8px; flex-wrap: wrap; min-width: 0; }
+.budget-head > .mov-cat { min-width: 0; max-width: 100%; }
 .budget-amount { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .budget-total { display: grid; gap: 8px; }
 .budget-total strong { font-variant-numeric: tabular-nums; }

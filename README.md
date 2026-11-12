@@ -103,6 +103,14 @@ node --test tests/unit.test.mjs   # tests de montos, fechas, validaciones, CSV y
 node tools/make-icons.mjs         # regenera los PNG de icons/
 ```
 
+**Pruebas en el navegador:** con el servidor local corriendo, desde la consola de DevTools:
+```js
+const t = await import('/tests/e2e/helpers.js');
+await t.reset();                                   // base limpia (borra todo y recarga)
+await t.mov({ monto: '1.500', categoria: 'Ropa' }); // carga un gasto por la interfaz
+t.basura();                                        // detecta "null", "undefined", "NaN"… visibles
+```
+
 > **Tip:** el Service Worker sirve todo desde la caché, así que mientras desarrollás activá en
 > Chrome DevTools → Application → Service Workers la opción **Update on reload**. Si no, vas a
 > seguir viendo la versión vieja.

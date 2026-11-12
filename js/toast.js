@@ -7,7 +7,12 @@ import { h } from './dom.js';
  *   duration = 0 → queda fijo hasta que se toque.
  */
 export function toast(message, { action, onAction, duration = 4000, kind = 'info' } = {}) {
-  const region = document.getElementById('toasts');
+  // Con una hoja abierta (modal, capa superior) el aviso va adentro; si no, quedaría tapado.
+  const dialog = document.querySelector('dialog[open]');
+  let region = document.getElementById('toasts');
+  if (dialog) {
+    region = dialog.querySelector('.toasts') ?? dialog.appendChild(h('div', { class: 'toasts toasts-dialog', 'aria-live': 'polite' }));
+  }
   let timer;
   const el = h('div', { class: `toast toast-${kind}`, role: kind === 'error' ? 'alert' : null },
     h('span', null, message));
