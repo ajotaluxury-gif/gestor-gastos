@@ -27,6 +27,74 @@ Montos en pesos con formato argentino (1.234,56) y fechas dd/mm/aaaa.
 
 ---
 
+## Stack y arquitectura
+
+| Capa | Tecnología |
+|---|---|
+| Interfaz | HTML + CSS + **JavaScript vanilla** con módulos ES. Sin framework, sin dependencias de npm y **sin paso de build**: lo que está en el repo es exactamente lo que corre. |
+| Gráficos | **Chart.js 4.5.1**, copiado en `vendor/` (no se baja de un CDN, así funciona sin internet). Se carga recién al abrir el Resumen. |
+| Datos | **IndexedDB** del navegador (base `gestor-gastos`, esquema v2, 10 tablas), con una capa propia en `js/db.js` y migraciones versionadas en `js/migrations.js`. |
+| App instalable y offline | **PWA**: `manifest.webmanifest` (nombre "Finanzas", íconos) y un **Service Worker** (`sw.js`) que guarda una copia de los archivos de la app para que abra sin conexión. |
+| Hosting | **GitHub Pages**: solo sirve los archivos estáticos. **No hay servidor, base de datos remota ni cuentas.** |
+| Tests | `node:test` (tests unitarios, sin dependencias) y ayudantes para probar en el navegador (`tests/e2e/helpers.js`). |
+
+### Dónde se guarda cada cosa
+
+GitHub Pages **no guarda ningún dato tuyo**: solo entrega la app. Todo lo que cargás vive **en el teléfono**:
+
+| Qué | Dónde | Notas |
+|---|---|---|
+| Movimientos, categorías, presupuestos, gastos fijos y pagos, cuentas de ahorro, metas, aportes, cotizaciones, personalización | **IndexedDB** del navegador, en el teléfono | Es la base de datos real. Las operaciones son transaccionales: un guardado, una restauración o un borrado total se hacen enteros o no se hacen. |
+| Archivos de la app (HTML, JS, CSS, íconos, Chart.js) | Caché del Service Worker | No contiene datos tuyos. Se reemplaza con cada versión nueva. |
+| Copia de la personalización (tema, letra) | `localStorage` | Solo para aplicar el tema **antes de pintar** y que no parpadee. El dato original está en IndexedDB. |
+| Marcas momentáneas ("se restauró", "se borró") | `sessionStorage` | Se borran solas al cerrar la app. |
+| **Backups** | Un archivo `.json` que **vos** descargás (queda en *Descargas*) o compartís (Drive, mail, WhatsApp…) | Nunca pasa por GitHub ni por ningún servidor. Es la única copia fuera del navegador. |
+
+**¿Por qué IndexedDB y no localStorage?** localStorage solo guarda texto, tiene un límite chico (~5 MB) y no tiene
+transacciones ni índices. IndexedDB guarda objetos, permite índices (por eso el listado de un mes es rápido aunque haya
+miles de movimientos), hace transacciones atómicas y tiene una cuota de cientos de MB a varios GB.
+
+**Consecuencias de este diseño:**
+- ✅ Funciona sin internet, es gratis y tus datos no salen del teléfono.
+- ⚠️ Si borrás los datos de Chrome, desinstalás aceptando borrar los datos del sitio o perdés el teléfono, los datos se
+  pierden. Por eso: almacenamiento persistente + recordatorio de backup cada 30 días. **Hacé backups.**
+- ⚠️ No se sincroniza entre dispositivos: cada teléfono tiene su propia base. Para pasar los datos, backup en uno y
+  restaurar en el otro. (Sincronizar requeriría agregar un backend con cuentas, por ejemplo Supabase o Firebase.)
+
+### ¿Me puedo quedar sin espacio?
+
+En la práctica, no. Medido en la app (noviembre de 2026):
+
+| Dato | Valor medido |
+|---|---|
+| Espacio por movimiento en IndexedDB (con índices) | **~0,75 KB** |
+| 20.000 movimientos | ~15 MB en la base · 6,6 MB el backup |
+| App instalada sin datos (archivos en caché) | ~1 MB |
+
+Cuánto deja usar el navegador: Chrome le da a cada sitio hasta un **60 % del disco total** del teléfono, limitado por el
+espacio que realmente esté libre. En un teléfono con aunque sea 1 GB libre, eso son cientos de MB o varios GB.
+
+| Uso | Movimientos por año | Espacio por año | 10 años |
+|---|---|---|---|
+| Normal (10 por día) | ~3.650 | ~2,7 MB | ~27 MB |
+| Intensivo (30 por día, personal + negocio) | ~11.000 | ~8 MB | ~80 MB |
+
+Es decir: el límite real es que **el teléfono se llene** (fotos, videos, apps), no la app. Para cubrir ese caso:
+- **Ajustes → Almacenamiento** muestra el espacio usado y el disponible para la app.
+- Si queda **menos del 20 %** de la cuota o **menos de 50 MB** libres, la app **avisa al abrirse** y en Ajustes, antes de
+  que falle algo.
+- Si aun así un guardado no entra, **no se guarda a medias**: la transacción se cancela, la hoja queda abierta con lo que
+  escribiste y aparece "No hay espacio suficiente en el teléfono para guardar los datos". Liberás espacio y reintentás.
+- Con el **almacenamiento persistente** otorgado (Ajustes lo muestra), Android no borra los datos para hacer lugar. Sin
+  él, ante falta extrema de espacio, el navegador podría borrar datos de sitios poco usados: por eso conviene instalar la
+  app y tener backups.
+
+El rendimiento tampoco es un problema con estos volúmenes: los listados consultan solo el mes visible (por índice), las
+búsquedas muestran resultados de a 200, y backup, validación y restauración de 10.000 movimientos tardan menos de medio
+segundo.
+
+---
+
 ## Publicarla en GitHub Pages
 
 Es todo estático (HTML, CSS y JS, sin build), así que GitHub Pages la sirve tal cual y con HTTPS,
@@ -144,6 +212,8 @@ celular abrí `http://localhost:8080`. Como es `localhost`, el Service Worker y 
 | `js/app.js` | Arranque, router por `#hash`, aviso de presupuestos |
 | `js/db.js`, `js/migrations.js`, `js/seed.js` | Capa fina sobre IndexedDB, migraciones y categorías iniciales |
 | `js/repo.js` | Reglas de negocio: validaciones, movimientos, categorías, presupuestos |
+| `js/storage.js` | Almacenamiento persistente, espacio usado/disponible y aviso de poco espacio |
+| `js/prefs.js` | Personalización (tema, colores, letra) |
 | `js/fijos.js` | Gastos fijos y cuotas: qué toca cada mes, vencimientos, pagos y capital comprometido |
 | `js/ahorros.js` | Cuentas de ahorro, metas, aportes/retiros, cotizaciones y conversiones |
 | `js/backup.js` | CSV, backup JSON, validación y restauración |

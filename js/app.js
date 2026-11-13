@@ -4,7 +4,7 @@ import { loadState, getState, setAmbito, subscribe } from './state.js';
 import { errorBox } from './dom.js';
 import { toast, toastError } from './toast.js';
 import { registerSW } from './sw-client.js';
-import { requestPersist } from './storage.js';
+import { requestPersist, storageUsage, espacioBajo } from './storage.js';
 import { destroyCharts } from './charts.js';
 import { resumenPresupuestos } from './repo.js';
 import { currentMonth } from './dates.js';
@@ -160,6 +160,14 @@ async function start() {
 
   // No bloquea el arranque; el resultado se ve en Ajustes.
   requestPersist();
+  // Si el teléfono está casi lleno, avisarlo al abrir (antes de que falle un guardado).
+  storageUsage().then((e) => {
+    if (espacioBajo(e)) {
+      toast('⚠️ Queda poco espacio en el teléfono. Hacé un backup y liberá lugar.', {
+        kind: 'warn', duration: 0, action: 'Ver', onAction: () => { location.hash = '#/ajustes'; },
+      });
+    }
+  });
 }
 
 start();

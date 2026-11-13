@@ -4,7 +4,7 @@
  * Así el navegador detecta un SW nuevo, precachea los archivos nuevos y la app
  * muestra el aviso "Hay una actualización, tocá para recargar".
  */
-const VERSION = '1.3.0';
+const VERSION = '1.3.1';
 const CACHE_PREFIX = 'gestor-gastos-';
 const CACHE = `${CACHE_PREFIX}${VERSION}`;
 

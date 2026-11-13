@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { AMBITOS } from '../state.js';
 import { getAll, DB_VERSION } from '../db.js';
-import { persistStatus, requestPersist, storageUsage, formatBytes } from '../storage.js';
+import { persistStatus, requestPersist, storageUsage, formatBytes, espacioBajo } from '../storage.js';
 import { getAppVersion } from '../sw-client.js';
 import { toast } from '../toast.js';
 import { tarjetaDatos } from './datos.js';
@@ -70,7 +70,16 @@ export async function render(state) {
       h('h3', null, 'Almacenamiento'),
       persistSlot,
       h('dl', { class: 'kv' },
-        h('dt', null, 'Espacio usado'), h('dd', null, formatBytes(usage)))),
+        h('dt', null, 'Espacio usado'), h('dd', null, formatBytes(usage.usage)),
+        usage.quota != null && h('dt', null, 'Disponible para la app'),
+        usage.quota != null && h('dd', null, formatBytes(usage.quota - (usage.usage ?? 0)))),
+      espacioBajo(usage)
+        ? h('div', { class: 'status status-warn', role: 'alert' },
+          h('span', { class: 'status-icon', 'aria-hidden': 'true' }, '⚠️'),
+          h('div', null,
+            h('strong', null, 'Queda poco espacio'),
+            h('p', null, 'El teléfono está casi lleno. Hacé un backup ahora y liberá espacio (fotos, videos, apps) para que la app pueda seguir guardando.')))
+        : h('p', { class: 'muted hint' }, 'Cada movimiento ocupa menos de 1 KB: tenés lugar de sobra para muchos años.')),
 
     h('div', { class: 'card' },
       h('h3', null, 'Acerca de'),

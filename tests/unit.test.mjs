@@ -311,6 +311,15 @@ test('personalización: valores desconocidos vuelven al original', async () => {
   assert.deepEqual(sanear({ tema: '<script>', acentoPersonal: 'red;x', letra: 999, extra: 1 }), DEFAULT);
 });
 
+test('aviso de poco espacio', async () => {
+  const { espacioBajo } = await import('../js/storage.js');
+  const MB = 1024 * 1024;
+  assert.equal(espacioBajo({ usage: 15 * MB, quota: 4000 * MB }), false);  // uso normal
+  assert.equal(espacioBajo({ usage: 900 * MB, quota: 1000 * MB }), true);  // más del 80 %
+  assert.equal(espacioBajo({ usage: 1 * MB, quota: 40 * MB }), true);      // menos de 50 MB libres
+  assert.equal(espacioBajo({ usage: null, quota: null }), false);         // navegador sin datos
+});
+
 test('fechas', () => {
   assert.equal(toDisplay('2026-03-05'), '05/03/2026');
   assert.equal(fromDisplay('5/3/2026'), '2026-03-05');
